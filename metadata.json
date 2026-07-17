@@ -1,0 +1,6 @@
+{
+  "name": "Heimdall",
+  "description": "AI Brand Intelligence Platform for creators, UGC creators, influencers, freelancers, and agencies to manage brand partnerships, generate AI outreach, and discover sponsors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
