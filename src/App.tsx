@@ -100,29 +100,38 @@ export default function App() {
     }, 6000);
   };
 
-  // 1. Listen to Auth State
+  // 1. Listen to Auth State & Protect Private Pages
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      const currentUser = session?.user || null;
-      if (currentUser) {
-        const uid = currentUser.id;
-        setUser({
-          ...currentUser,
-          uid,
-          id: uid
-        });
-        syncUserData(uid, currentUser);
-      } else {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error || !session) {
+        setUser(null);
         setAuthLoading(false);
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
+        return;
       }
+
+      const currentUser = session.user;
+      const uid = currentUser.id;
+      setUser({
+        ...currentUser,
+        uid,
+        id: uid
+      });
+      syncUserData(uid, currentUser);
     }).catch(err => {
-      console.error("Error getting session:", err);
+      console.error("Error checking session:", err);
+      setUser(null);
       setAuthLoading(false);
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user || null;
-      if (currentUser) {
+      if (currentUser && session) {
         const uid = currentUser.id;
         setUser({
           ...currentUser,
@@ -130,6 +139,9 @@ export default function App() {
           id: uid
         });
         await syncUserData(uid, currentUser);
+        if (window.location.pathname === '/login') {
+          window.location.href = '/';
+        }
       } else {
         setUser(null);
         setCreatorProfile(null);
@@ -138,6 +150,9 @@ export default function App() {
         setPortfolioItems([]);
         setNotifications([]);
         setRecommendations([]);
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
       setAuthLoading(false);
     });

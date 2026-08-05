@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { supabase } from '../supabaseClient';
-import { Shield, Sparkles, AlertCircle } from 'lucide-react';
+import { supabase } from '../supabaseClient.js';
+import { Shield, Sparkles, AlertCircle, CheckCircle2 } from 'lucide-react';
 
 interface LoginViewProps {
   onLoginSuccess: (user: any) => void;
@@ -11,32 +11,39 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setMessage('');
     setLoading(true);
     try {
       if (isRegister) {
+        const submittedEmail = email;
+        // 1) For Sign Up: use supabase.auth.signUp({ email, password })
         const { data, error: signUpError } = await supabase.auth.signUp({ email, password });
         if (signUpError) {
           setError(signUpError.message);
         } else {
-          if (data.user) {
-            onLoginSuccess(data.user);
-            window.location.href = '/';
-          } else {
-            setError('Account creation succeeded! Please check your email for confirmation.');
-          }
+          // Do NOT auto-login. Switch to Sign In mode, populate email, clear password & show success message
+          setIsRegister(false);
+          setEmail(submittedEmail);
+          setPassword('');
+          setMessage("Account created! Check your email to confirm before signing in.");
         }
       } else {
+        // 2) For Sign In: use supabase.auth.signInWithPassword({ email, password })
         const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
         if (signInError) {
           setError(signInError.message);
-        } else {
+        } else if (data?.session) {
+          // Only redirect when a real session exists after login
           onLoginSuccess(data.user);
           window.location.href = '/';
+        } else {
+          setError('Could not establish session. Please try logging in again.');
         }
       }
     } catch (err: any) {
@@ -49,6 +56,7 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
 
   const handleGoogleSignIn = async () => {
     setError('');
+    setMessage('');
     setLoading(true);
     try {
       const { error: oAuthError } = await supabase.auth.signInWithOAuth({
@@ -70,6 +78,7 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
 
   const handleGuestLogin = async () => {
     setError('');
+    setMessage('');
     setLoading(true);
     try {
       const guestEmail = 'guest@heimdall.ai';
@@ -88,15 +97,17 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
 
         if (signUpError) {
           setError(signUpError.message);
-        } else if (signUpData.user) {
+        } else if (signUpData?.session) {
           onLoginSuccess(signUpData.user);
           window.location.href = '/';
         } else {
-          setError('Guest sign-up completed. Please check credentials.');
+          setMessage('Check your email and confirm your account before logging in.');
         }
-      } else {
+      } else if (signInData?.session) {
         onLoginSuccess(signInData.user);
         window.location.href = '/';
+      } else {
+        setError('Guest login failed to establish session.');
       }
     } catch (err: any) {
       console.error(err);
@@ -137,13 +148,6 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
           </p>
         </div>
 
-        {error && (
-          <div className="flex items-start gap-2.5 p-3.5 bg-red-950/40 border border-red-900 rounded-lg text-red-400 text-xs mb-5">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-            <span>{error}</span>
-          </div>
-        )}
-
         <div className="cyber-panel p-6 md:p-8 rounded-[28px] shadow-xl space-y-5 relative overflow-hidden">
           <div className="absolute top-0 right-0 w-24 h-24 bg-[#00C8FF]/3 rounded-full filter blur-xl"></div>
           <form onSubmit={handleEmailAuth} className="space-y-4">
@@ -183,6 +187,22 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
             </button>
           </form>
 
+          {/* Info message handling: displayed when email confirmation is needed */}
+          {message && (
+            <div id="auth-info-message" className="flex items-center gap-2 p-3 bg-cyan-950/60 border border-[#00C8FF]/40 rounded-xl text-[#00C8FF] text-xs font-mono shadow-[0_0_15px_rgba(0,200,255,0.1)]">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-[#00C8FF]" />
+              <span>{message}</span>
+            </div>
+          )}
+
+          {/* Error handling: small error message displayed under the form */}
+          {error && (
+            <div id="auth-error-message" className="flex items-center gap-2 p-3 bg-red-950/50 border border-red-500/30 rounded-xl text-red-400 text-xs font-mono">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+              <span>{error}</span>
+            </div>
+          )}
+
           <div className="relative my-6 text-center">
             <div className="absolute inset-0 flex items-center">
               <div className="w-full border-t border-white/10"></div>
@@ -221,7 +241,11 @@ export default function LoginView({ onLoginSuccess }: LoginViewProps) {
         <div className="mt-8 text-center text-xs">
           <button
             id="toggle-auth-mode-btn"
-            onClick={() => setIsRegister(!isRegister)}
+            onClick={() => {
+              setIsRegister(!isRegister);
+              setError('');
+              setMessage('');
+            }}
             className="text-zinc-500 hover:text-[#00C8FF] transition-colors cursor-pointer"
           >
             {isRegister ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
