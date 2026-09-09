@@ -1,31 +1,36 @@
 import React, { useState } from 'react';
-import { CreatorProfile } from '../types';
+import { CreatorProfile, ThemeId } from '../types';
+import { THEME_OPTIONS } from './ThemeSwitcher';
 import { 
-  Shield, 
   Save, 
-  Key, 
-  Globe, 
-  Plus, 
-  Trash, 
+  Settings, 
+  Briefcase, 
+  Lock, 
+  Compass, 
+  Palette, 
   Check, 
-  AlertCircle,
-  Instagram,
-  Settings,
-  Activity,
-  DollarSign,
-  Briefcase,
-  Zap,
-  Lock,
-  Compass
+  Sparkles,
+  Sun,
+  Flame,
+  Moon,
+  Sliders
 } from 'lucide-react';
 
 interface SettingsViewProps {
   creatorProfile: CreatorProfile;
   onSaveProfile: (profile: CreatorProfile) => void;
   userEmail: string;
+  currentTheme?: ThemeId;
+  onSelectTheme?: (themeId: ThemeId) => void;
 }
 
-export default function SettingsView({ creatorProfile, onSaveProfile, userEmail }: SettingsViewProps) {
+export default function SettingsView({ 
+  creatorProfile, 
+  onSaveProfile, 
+  userEmail,
+  currentTheme = 'pearl-mist',
+  onSelectTheme
+}: SettingsViewProps) {
   const [fullName, setFullName] = useState(creatorProfile.fullName || '');
   const [creatorName, setCreatorName] = useState(creatorProfile.creatorName || '');
   const [bio, setBio] = useState(creatorProfile.bio || '');
@@ -140,7 +145,7 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
     };
 
     onSaveProfile(updatedProfile);
-    alert('Creator Profile and partnership rules synchronized successfully!');
+    alert('Creator Profile and partnership parameters synchronized successfully!');
   };
 
   const handleUpdatePassword = (e: React.FormEvent) => {
@@ -149,27 +154,114 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
       setPwdMessage('Passwords do not match.');
       return;
     }
-    setPwdMessage('Password successfully updated via secure credentials tunnel!');
+    setPwdMessage('Security key credentials updated successfully.');
     setPassword('');
     setConfirmPassword('');
   };
 
+  const getThemeIcon = (id: ThemeId) => {
+    switch (id) {
+      case 'pearl-mist':
+        return <Sun className="w-4 h-4 text-teal-600" />;
+      case 'amber-hearth':
+        return <Flame className="w-4 h-4 text-amber-500" />;
+      case 'aurora-sage':
+        return <Sparkles className="w-4 h-4 text-teal-400" />;
+      case 'obsidian-void':
+        return <Moon className="w-4 h-4 text-sky-400" />;
+      case 'cyber-slate':
+        return <Sliders className="w-4 h-4 text-cyan-400" />;
+    }
+  };
+
   return (
-    <div id="settings-view" className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+    <div id="settings-view" className="space-y-8 max-w-7xl mx-auto animate-in fade-in duration-500 pb-16 font-sans">
       
       {/* Header Block */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-2">
-            <Settings className="w-4 h-4 text-[#00C8FF]" />
-            <span className="text-[10px] font-mono text-[#32E8FF] uppercase tracking-widest font-semibold">Command Matrix Calibration</span>
+          <div className="flex items-center gap-2 text-teal-800 text-xs font-extrabold uppercase tracking-wider mb-1">
+            <Settings className="w-4 h-4 text-teal-700" />
+            <span>Workspace & System Calibration</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white font-sans">
-            System & Profile Settings
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-zinc-950 font-display">
+            Settings & Atmosphere
           </h1>
-          <p className="text-zinc-400 text-sm md:text-base mt-2 max-w-2xl font-light">
-            Synchronize your brand representative identity, social media statistical nodes, baseline pricing rules, and security credentials.
+          <p className="text-xs md:text-sm text-zinc-600 font-medium mt-1">
+            Customize visual theme modes, creator profile identity, baseline service pricing, and notification rules.
           </p>
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* SECTION 1: VISUAL THEME MODES (FROM 5 REFERENCE MOODBOARDS) */}
+      {/* ========================================================= */}
+      <div className="rounded-[28px] glass-panel p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-zinc-200/80">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-teal-100 border border-teal-200 flex items-center justify-center text-teal-800">
+              <Palette className="w-4 h-4" />
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-zinc-950 font-display">Atmosphere & Visual Theme</h2>
+              <p className="text-xs text-zinc-600 font-medium">5 bespoke visual modes crafted from reference moodboards</p>
+            </div>
+          </div>
+          <span className="text-xs font-extrabold text-teal-900 bg-teal-50 border border-teal-200 px-3 py-1 rounded-full">
+            Active: {THEME_OPTIONS.find(t => t.id === currentTheme)?.name}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 pt-1">
+          {THEME_OPTIONS.map((theme) => {
+            const isSelected = theme.id === currentTheme;
+            return (
+              <button
+                key={theme.id}
+                onClick={() => onSelectTheme && onSelectTheme(theme.id)}
+                className={`p-4 rounded-2xl border text-left transition-all cursor-pointer flex flex-col justify-between space-y-3 relative group ${
+                  isSelected
+                    ? 'bg-teal-50/90 border-teal-600 shadow-md ring-2 ring-teal-500/20'
+                    : 'bg-white/80 hover:bg-white border-zinc-200/80 hover:border-zinc-300 shadow-xs hover:shadow-sm'
+                }`}
+              >
+                {/* Top: Icon + Ref badge */}
+                <div className="flex items-center justify-between">
+                  <div className="w-8 h-8 rounded-xl bg-zinc-100 flex items-center justify-center">
+                    {getThemeIcon(theme.id)}
+                  </div>
+                  <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 font-extrabold">
+                    {theme.sourceImageRef}
+                  </span>
+                </div>
+
+                {/* Theme Name & Subtitle */}
+                <div>
+                  <h3 className="text-xs font-extrabold text-zinc-950 font-display flex items-center gap-1.5">
+                    <span>{theme.name}</span>
+                    {isSelected && <Check className="w-3.5 h-3.5 text-teal-700 stroke-[3]" />}
+                  </h3>
+                  <p className="text-[11px] text-zinc-500 font-semibold line-clamp-1 mt-0.5">
+                    {theme.subtitle}
+                  </p>
+                </div>
+
+                {/* Color swatches preview strip */}
+                <div className="pt-2 border-t border-zinc-100 flex items-center gap-1.5">
+                  {theme.previewColors.map((color, idx) => (
+                    <span
+                      key={idx}
+                      className="w-5 h-5 rounded-full border border-black/10 shadow-xs"
+                      style={{ backgroundColor: color }}
+                    />
+                  ))}
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase ml-auto">
+                    {theme.mode}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -177,278 +269,78 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         
         {/* Left 2 cols: Main Creator Profile form */}
-        <form onSubmit={handleSaveAll} className="lg:col-span-2 space-y-8 glass-card p-8 rounded-[28px]">
-          <h3 className="font-bold text-white text-xs uppercase tracking-wider font-mono pb-4 border-b border-white/10 flex items-center gap-2">
-            <Briefcase className="w-4 h-4 text-[#00C8FF]" />
-            <span>Partner Profile Configuration</span>
+        <form onSubmit={handleSaveAll} className="lg:col-span-2 space-y-8 glass-panel p-8 rounded-[28px]">
+          <h3 className="font-extrabold text-zinc-950 text-sm uppercase tracking-wider font-display pb-4 border-b border-zinc-200/80 flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-teal-700" />
+            <span>Talent Profile Configuration</span>
           </h3>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs font-light">
-            <div className="space-y-1">
-              <label className="block text-zinc-400 text-[9px] uppercase font-mono tracking-wider font-bold">Full Name</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
+            <div className="space-y-1.5">
+              <label className="block text-zinc-700 text-xs font-extrabold">Full Name</label>
               <input
                 id="settings-fullname"
                 type="text"
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF] font-mono"
+                className="w-full bg-zinc-50/80 border border-zinc-200 rounded-xl px-4 py-2.5 text-zinc-900 font-medium outline-none focus:border-teal-600 focus:bg-white"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-zinc-400 text-[9px] uppercase font-mono tracking-wider font-bold">Creator Brand Name</label>
+            <div className="space-y-1.5">
+              <label className="block text-zinc-700 text-xs font-extrabold">Creator Display Handle / Name</label>
               <input
                 id="settings-creatorname"
                 type="text"
                 required
                 value={creatorName}
                 onChange={(e) => setCreatorName(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF] font-mono"
+                className="w-full bg-zinc-50/80 border border-zinc-200 rounded-xl px-4 py-2.5 text-zinc-900 font-medium outline-none focus:border-teal-600 focus:bg-white"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-zinc-400 text-[9px] uppercase font-mono tracking-wider font-bold">Country of Residence</label>
+            <div className="space-y-1.5">
+              <label className="block text-zinc-700 text-xs font-extrabold">Country of Residence</label>
               <input
                 id="settings-country"
                 type="text"
                 required
                 value={country}
                 onChange={(e) => setCountry(e.target.value)}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF] font-mono"
+                className="w-full bg-zinc-50/80 border border-zinc-200 rounded-xl px-4 py-2.5 text-zinc-900 font-medium outline-none focus:border-teal-600 focus:bg-white"
               />
             </div>
 
-            <div className="space-y-1">
-              <label className="block text-zinc-400 text-[9px] uppercase font-mono tracking-wider font-bold">Portfolio Website / Link</label>
+            <div className="space-y-1.5">
+              <label className="block text-zinc-700 text-xs font-extrabold">Portfolio Website / Case Studies Link</label>
               <input
                 id="settings-porturl"
                 type="url"
                 value={portfolioUrl}
                 onChange={(e) => setPortfolioUrl(e.target.value)}
                 placeholder="https://..."
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF] font-mono"
+                className="w-full bg-zinc-50/80 border border-zinc-200 rounded-xl px-4 py-2.5 text-zinc-900 font-medium outline-none focus:border-teal-600 focus:bg-white"
               />
             </div>
           </div>
 
           <div className="space-y-1.5 text-xs">
-            <label className="block text-zinc-400 text-[9px] uppercase font-mono tracking-wider font-bold">Creator Biography (Core AI Context) *</label>
+            <label className="block text-zinc-700 text-xs font-extrabold">Creator Biography (Core AI Context) *</label>
             <textarea
               id="settings-bio"
               required
-              rows={4}
+              rows={3}
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell brands about your focus, audience demographics, visual aesthetics, and why you bring immense value..."
-              className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF] resize-none leading-relaxed font-light"
+              placeholder="Tell brands about your target audience demographics, visual aesthetics, and commercial specialties..."
+              className="w-full bg-zinc-50/80 border border-zinc-200 rounded-xl px-4 py-2.5 text-zinc-900 font-medium outline-none focus:border-teal-600 focus:bg-white resize-none leading-relaxed"
             />
           </div>
 
-          {/* Social connections links */}
-          <div className="space-y-6 pt-4 border-t border-white/5">
-            <span className="text-zinc-400 font-mono text-[9px] uppercase font-bold block tracking-widest">Connected Channels & Media Stats</span>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-xs">
-              <div className="space-y-1">
-                <label className="block text-zinc-400 text-[10px] uppercase font-bold font-mono tracking-wider">Instagram URL</label>
-                <input
-                  type="url"
-                  value={instagramUrl}
-                  onChange={(e) => setInstagramUrl(e.target.value)}
-                  placeholder="https://instagram.com/..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-zinc-400 text-[10px] uppercase font-bold font-mono tracking-wider">TikTok URL</label>
-                <input
-                  type="url"
-                  value={tiktokUrl}
-                  onChange={(e) => setTiktokUrl(e.target.value)}
-                  placeholder="https://tiktok.com/@..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-zinc-400 text-[10px] uppercase font-bold font-mono tracking-wider">YouTube Channel URL</label>
-                <input
-                  type="url"
-                  value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
-                  placeholder="https://youtube.com/..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF]"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-zinc-400 text-[10px] uppercase font-bold font-mono tracking-wider">LinkedIn Profile URL</label>
-                <input
-                  type="url"
-                  value={linkedinUrl}
-                  onChange={(e) => setLinkedinUrl(e.target.value)}
-                  placeholder="https://linkedin.com/in/..."
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#00C8FF]"
-                />
-              </div>
-            </div>
-
-            {/* Platform Metrics Edit Fields */}
-            {(instagramUrl || tiktokUrl || youtubeUrl || linkedinUrl) && (
-              <div className="p-5 rounded-[20px] bg-black/40 border border-white/10 space-y-4">
-                <span className="text-zinc-400 font-mono text-[9px] uppercase font-bold block tracking-widest flex items-center gap-1.5">
-                  <Activity className="w-3.5 h-3.5 text-[#32E8FF] animate-pulse" />
-                  <span>Media Kit Metrics Tuning Node</span>
-                </span>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {instagramUrl && (
-                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                      <span className="text-[10px] text-pink-500 font-mono font-bold uppercase block">Instagram Stats</span>
-                      <div className="grid grid-cols-3 gap-2 text-[11px]">
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">Followers</label>
-                          <input
-                            type="text"
-                            value={instagramFollowers}
-                            onChange={(e) => setInstagramFollowers(e.target.value)}
-                            placeholder="18k"
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">ER %</label>
-                          <input
-                            type="text"
-                            value={instagramEngagement}
-                            onChange={(e) => setInstagramEngagement(e.target.value)}
-                            placeholder="4.2%"
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">Avg Views</label>
-                          <input
-                            type="text"
-                            value={instagramViews}
-                            onChange={(e) => setInstagramViews(e.target.value)}
-                            placeholder="8k"
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {tiktokUrl && (
-                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                      <span className="text-[10px] text-[#32E8FF] font-mono font-bold uppercase block">TikTok Stats</span>
-                      <div className="grid grid-cols-3 gap-2 text-[11px]">
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">Followers</label>
-                          <input
-                            type="text"
-                            value={tiktokFollowers}
-                            onChange={(e) => setTiktokFollowers(e.target.value)}
-                            placeholder="85k"
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">ER %</label>
-                          <input
-                            type="text"
-                            value={tiktokEngagement}
-                            onChange={(e) => setTiktokEngagement(e.target.value)}
-                            placeholder="7.2%"
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">Avg Views</label>
-                          <input
-                            type="text"
-                            value={tiktokViews}
-                            onChange={(e) => setTiktokViews(e.target.value)}
-                            placeholder="45k"
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {youtubeUrl && (
-                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                      <span className="text-[10px] text-red-500 font-mono font-bold uppercase block">YouTube Stats</span>
-                      <div className="grid grid-cols-3 gap-2 text-[11px]">
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">Subs</label>
-                          <input
-                            type="text"
-                            value={youtubeSubscribers}
-                            onChange={(e) => setYoutubeSubscribers(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">ER %</label>
-                          <input
-                            type="text"
-                            value={youtubeEngagement}
-                            onChange={(e) => setYoutubeEngagement(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">Avg Views</label>
-                          <input
-                            type="text"
-                            value={youtubeViews}
-                            onChange={(e) => setYoutubeViews(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {linkedinUrl && (
-                    <div className="p-4 bg-black/40 border border-white/10 rounded-xl space-y-2">
-                      <span className="text-[10px] text-blue-400 font-mono font-bold uppercase block">LinkedIn Stats</span>
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">Followers</label>
-                          <input
-                            type="text"
-                            value={linkedinFollowers}
-                            onChange={(e) => setLinkedinFollowers(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-[8px] text-zinc-500 font-mono uppercase">ER %</label>
-                          <input
-                            type="text"
-                            value={linkedinEngagement}
-                            onChange={(e) => setLinkedinEngagement(e.target.value)}
-                            className="w-full bg-zinc-900/50 border border-white/10 rounded-lg px-2 py-1 text-white font-mono focus:outline-none"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Niches Builder */}
-          <div className="space-y-3 pt-4 border-t border-white/5">
-            <label className="block text-zinc-400 text-[9px] uppercase font-mono tracking-wider font-bold">Your Content Niches (Used for AI Matchmaking)</label>
+          {/* Niches */}
+          <div className="space-y-3 pt-4 border-t border-zinc-200/80">
+            <label className="block text-zinc-700 text-xs font-extrabold">Your Content Niches (Used for AI Matchmaking)</label>
             <div className="flex gap-2">
               <input
                 id="settings-niche-input"
@@ -456,30 +348,30 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
                 placeholder="e.g. Wellness, Fitness, Tech Setup"
                 value={newNicheInput}
                 onChange={(e) => setNewNicheInput(e.target.value)}
-                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#00C8FF] font-mono"
+                className="flex-1 bg-zinc-50/80 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 font-medium outline-none focus:border-teal-600 focus:bg-white"
               />
               <button
                 type="button"
                 id="add-niche-btn"
                 onClick={handleAddNiche}
-                className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-xs text-white font-mono font-bold uppercase cursor-pointer"
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-xs text-zinc-800 font-bold uppercase cursor-pointer"
               >
                 Add
               </button>
             </div>
             <div className="flex flex-wrap gap-2 mt-2">
               {niches.map((niche) => (
-                <span key={niche} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00C8FF]/10 border border-[#00C8FF]/20 text-xs text-[#00C8FF] font-mono uppercase">
+                <span key={niche} className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-xs text-teal-800 font-bold">
                   <span>{niche}</span>
-                  <button type="button" onClick={() => handleRemoveNiche(niche)} className="text-[#00C8FF] font-bold ml-1 hover:text-red-400 font-mono text-xs cursor-pointer">×</button>
+                  <button type="button" onClick={() => handleRemoveNiche(niche)} className="text-teal-800 font-extrabold ml-1 hover:text-red-500 cursor-pointer">×</button>
                 </span>
               ))}
             </div>
           </div>
 
           {/* Services Offered */}
-          <div className="space-y-4 pt-4 border-t border-white/5">
-            <label className="block text-zinc-400 text-[9px] uppercase font-mono tracking-wider font-bold">Sponsorship Deliverables & baseline fees</label>
+          <div className="space-y-4 pt-4 border-t border-zinc-200/80">
+            <label className="block text-zinc-700 text-xs font-extrabold">Sponsorship Deliverables & Baseline Rates</label>
             
             <div className="flex gap-2">
               <input
@@ -488,33 +380,33 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
                 placeholder="e.g. Dedicated YouTube Video"
                 value={newServiceInput}
                 onChange={(e) => setNewServiceInput(e.target.value)}
-                className="flex-1 bg-black/40 border border-white/10 rounded-xl px-4 py-2 text-xs text-white focus:outline-none focus:border-[#00C8FF] font-mono"
+                className="flex-1 bg-zinc-50/80 border border-zinc-200 rounded-xl px-4 py-2 text-xs text-zinc-900 font-medium outline-none focus:border-teal-600 focus:bg-white"
               />
               <button
                 type="button"
                 id="add-service-btn"
                 onClick={handleAddService}
-                className="px-4 py-2 bg-white/5 border border-white/10 hover:bg-white/10 rounded-xl text-xs text-white font-mono font-bold uppercase cursor-pointer"
+                className="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 border border-zinc-200 rounded-xl text-xs text-zinc-800 font-bold uppercase cursor-pointer"
               >
                 Add
               </button>
             </div>
 
-            <div className="space-y-3 mt-3 font-mono text-xs text-zinc-300">
+            <div className="space-y-2.5 mt-3 text-xs text-zinc-700">
               {services.map((svc) => (
-                <div key={svc} className="flex items-center justify-between p-3 bg-black/40 border border-white/10 rounded-xl">
+                <div key={svc} className="flex items-center justify-between p-3 bg-zinc-50/80 border border-zinc-200 rounded-xl">
                   <div className="flex items-center gap-2.5">
-                    <button type="button" onClick={() => handleRemoveService(svc)} className="text-zinc-500 hover:text-red-400 transition-colors cursor-pointer">🗑️</button>
-                    <span className="text-xs">{svc}</span>
+                    <button type="button" onClick={() => handleRemoveService(svc)} className="text-zinc-400 hover:text-red-500 transition-colors cursor-pointer">🗑️</button>
+                    <span className="font-bold text-zinc-900">{svc}</span>
                   </div>
                   
                   <div className="flex items-center gap-1.5">
-                    <span className="text-zinc-600">$</span>
+                    <span className="text-zinc-500 font-bold">$</span>
                     <input
                       type="number"
                       value={basePricing[svc] || 250}
                       onChange={(e) => handlePricingChange(svc, Number(e.target.value))}
-                      className="w-24 px-2 py-1 bg-black/40 border border-white/10 rounded-lg text-white font-mono text-xs text-right focus:outline-none focus:border-[#00C8FF]"
+                      className="w-24 px-2 py-1 bg-white border border-zinc-200 rounded-lg text-zinc-950 font-bold text-xs text-right focus:outline-none focus:border-teal-600"
                     />
                   </div>
                 </div>
@@ -522,14 +414,14 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
             </div>
           </div>
 
-          <div className="flex items-center justify-end pt-5 border-t border-white/5">
+          <div className="flex items-center justify-end pt-5 border-t border-zinc-200/80">
             <button
               id="save-profile-btn"
               type="submit"
-              className="px-6 py-3 btn-emerald text-black shadow-lg shadow-[#00C8FF]/10 font-bold uppercase tracking-wider text-xs rounded-xl flex items-center gap-2 transition-all font-mono cursor-pointer"
+              className="teal-pill-button px-6 py-2.5 text-xs font-extrabold flex items-center gap-2 cursor-pointer shadow-sm"
             >
               <Save className="w-4 h-4" />
-              <span>Save Calibration Profile</span>
+              <span>Save Configuration</span>
             </button>
           </div>
 
@@ -539,22 +431,22 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
         <div className="space-y-6">
           
           {/* Account credentials card */}
-          <div className="glass-card p-6 rounded-[28px] space-y-4">
-            <h4 className="font-bold text-white text-xs uppercase tracking-wider font-mono flex items-center gap-2">
-              <Lock className="w-4 h-4 text-[#32E8FF]" />
+          <div className="glass-panel p-6 rounded-[28px] space-y-4">
+            <h4 className="font-extrabold text-zinc-950 text-xs uppercase tracking-wider font-display flex items-center gap-2">
+              <Lock className="w-4 h-4 text-teal-700" />
               <span>Security Hub</span>
             </h4>
             
-            <div className="space-y-2 text-xs">
-              <span className="text-[9px] text-zinc-500 uppercase font-mono block tracking-widest font-bold">Logged In As:</span>
-              <p className="text-white font-mono p-3 bg-black/40 rounded-xl border border-white/10 text-xs truncate">{userEmail}</p>
+            <div className="space-y-1.5 text-xs">
+              <span className="text-[10px] text-zinc-500 uppercase font-bold block tracking-wider">Logged In As:</span>
+              <p className="text-zinc-900 font-semibold p-2.5 bg-zinc-50/80 rounded-xl border border-zinc-200 text-xs truncate">{userEmail}</p>
             </div>
 
-            <form onSubmit={handleUpdatePassword} className="space-y-4 pt-2">
-              <span className="text-[9px] text-zinc-500 uppercase font-mono block tracking-widest font-bold">Update security key:</span>
+            <form onSubmit={handleUpdatePassword} className="space-y-3 pt-2">
+              <span className="text-[10px] text-zinc-500 uppercase font-bold block tracking-wider">Update Secret Key:</span>
               
               {pwdMessage && (
-                <p className="p-3 bg-white/5 text-[#00C8FF] rounded-xl text-[10px] font-mono border border-[#00C8FF]/20 leading-relaxed">{pwdMessage}</p>
+                <p className="p-2.5 bg-teal-50 text-teal-800 rounded-xl text-xs font-bold border border-teal-200 leading-relaxed">{pwdMessage}</p>
               )}
 
               <div>
@@ -564,7 +456,7 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
                   placeholder="New Secret Key"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#00C8FF]"
+                  className="w-full bg-zinc-50/80 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-teal-600 focus:bg-white"
                 />
               </div>
 
@@ -575,14 +467,14 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
                   placeholder="Confirm Secret Key"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#00C8FF]"
+                  className="w-full bg-zinc-50/80 border border-zinc-200 rounded-xl px-3 py-2 text-xs text-zinc-900 focus:outline-none focus:border-teal-600 focus:bg-white"
                 />
               </div>
 
               <button
                 id="update-pwd-btn"
                 type="submit"
-                className="w-full py-2.5 bg-white/5 hover:bg-[#00C8FF]/10 border border-white/10 rounded-xl text-[10px] font-bold text-white uppercase font-mono tracking-wider transition-all cursor-pointer"
+                className="w-full py-2 bg-white hover:bg-zinc-100 border border-zinc-200 rounded-xl text-xs font-extrabold text-zinc-800 transition-all cursor-pointer shadow-xs"
               >
                 Reset Security Key
               </button>
@@ -590,50 +482,42 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
           </div>
 
           {/* Preferences card */}
-          <div className="glass-card p-6 rounded-[28px] space-y-4">
-            <h4 className="font-bold text-white text-xs uppercase tracking-wider font-mono flex items-center gap-2">
-              <Compass className="w-4 h-4 text-[#00C8FF]" />
+          <div className="glass-panel p-6 rounded-[28px] space-y-4">
+            <h4 className="font-extrabold text-zinc-950 text-xs uppercase tracking-wider font-display flex items-center gap-2">
+              <Compass className="w-4 h-4 text-teal-700" />
               <span>Platform Rules</span>
             </h4>
             
-            <div className="space-y-4 text-xs text-zinc-400 font-light">
+            <div className="space-y-4 text-xs text-zinc-600">
               <div className="flex justify-between items-center">
                 <div>
-                  <h5 className="font-semibold text-white text-xs">CRM Notifications</h5>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Alert me when followups are due.</p>
+                  <h5 className="font-extrabold text-zinc-900 text-xs">CRM Notifications</h5>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Alert me when milestone followups are due.</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={notifPreferences.deals}
                   onChange={(e) => setNotifPreferences(prev => ({ ...prev, deals: e.target.checked }))}
-                  className="accent-[#00C8FF] cursor-pointer w-4 h-4"
+                  className="accent-teal-700 cursor-pointer w-4 h-4"
                 />
               </div>
 
-              <div className="flex justify-between items-center border-t border-white/10 pt-3">
+              <div className="flex justify-between items-center border-t border-zinc-200/80 pt-3">
                 <div>
-                  <h5 className="font-semibold text-white text-xs">Autonomous Discovery</h5>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Let Heimdall match new sponsors daily.</p>
+                  <h5 className="font-extrabold text-zinc-900 text-xs">Autonomous Discovery</h5>
+                  <p className="text-[11px] text-zinc-500 mt-0.5">Let Heimdall match new sponsors daily.</p>
                 </div>
                 <input
                   type="checkbox"
                   checked={notifPreferences.recommendations}
                   onChange={(e) => setNotifPreferences(prev => ({ ...prev, recommendations: e.target.checked }))}
-                  className="accent-[#00C8FF] cursor-pointer w-4 h-4"
+                  className="accent-teal-700 cursor-pointer w-4 h-4"
                 />
               </div>
 
-              <div className="flex justify-between items-center border-t border-white/10 pt-3">
-                <div>
-                  <h5 className="font-semibold text-white text-xs">Aesthetic Darkmode</h5>
-                  <p className="text-[10px] text-zinc-500 mt-0.5">Lock system look to premium monochrome.</p>
-                </div>
-                <span className="px-2 py-0.5 rounded bg-white/5 border border-white/10 text-[#00C8FF] text-[9px] font-mono uppercase font-bold">ACTIVE</span>
-              </div>
-
-              <div className="border-t border-white/10 pt-4 flex flex-col gap-2">
-                <h5 className="font-semibold text-white text-xs">Onboarding Wizard</h5>
-                <p className="text-[10px] text-zinc-500">Reset and replay the customized Heimdall onboarding experience.</p>
+              <div className="border-t border-zinc-200/80 pt-4 flex flex-col gap-2">
+                <h5 className="font-extrabold text-zinc-900 text-xs">Onboarding Wizard</h5>
+                <p className="text-[11px] text-zinc-500">Reset and replay the customized Heimdall onboarding experience.</p>
                 <button
                   type="button"
                   id="replay-onboarding-btn"
@@ -648,7 +532,7 @@ export default function SettingsView({ creatorProfile, onSaveProfile, userEmail 
                       });
                     }
                   }}
-                  className="w-full mt-1 py-2 bg-[#00C8FF]/10 hover:bg-[#00C8FF]/20 text-[#00C8FF] border border-[#00C8FF]/25 hover:border-[#00C8FF]/40 rounded-xl text-[10px] font-bold uppercase tracking-wider font-mono transition-all text-center cursor-pointer"
+                  className="w-full mt-1 py-2 bg-white hover:bg-zinc-100 text-teal-800 border border-teal-200 rounded-xl text-xs font-extrabold transition-all text-center cursor-pointer shadow-xs"
                 >
                   Replay Onboarding Setup
                 </button>

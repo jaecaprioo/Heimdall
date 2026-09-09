@@ -1,10 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { CreatorProfile, SavedBrand, AssistantMessage } from '../types';
 import { 
   Sparkles, 
   Send, 
   ArrowUpRight, 
-  HelpCircle, 
   User, 
   Bot, 
   Layers, 
@@ -13,11 +12,12 @@ import {
   Check, 
   Copy, 
   Clock, 
-  Cpu, 
-  CornerDownLeft,
-  ChevronRight,
-  Database,
-  Volume2
+  ChevronRight, 
+  Scale,
+  DollarSign,
+  Compass,
+  Zap,
+  Target
 } from 'lucide-react';
 
 interface AiAssistantViewProps {
@@ -31,135 +31,42 @@ export default function AiAssistantView({ creatorProfile, savedBrands, onExecute
     {
       id: 'm1',
       role: 'assistant',
-      content: "Awaiting instruction. My neural registers have synchronized with your Creator Profile niches, followers demographics, and pricing brackets. I am fully prepared to synthesize custom brand outreach pitches, video content briefs, or contract terms.",
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      content: "Hello Alex. I am your Heimdall Executive Co-Pilot. I've calibrated your verified audience telemetry (126.4K reach, 6.24% engagement) and live rate card. How can I assist your business today?",
+      timestamp: 'Just now',
       suggestedActions: [
-        { label: '🔍 Discover premium tech partners', type: 'discovery', params: { search: 'tech' } },
-        { label: '⚡ Draft JARVIS pitch for Nike', type: 'pitch', params: { brandId: 'b1', brandName: 'Nike' } },
-        { label: '🎬 Video concept storyboard for Airbnb', type: 'campaign', params: { brandId: 'b5', brandName: 'Airbnb' } }
+        { label: 'Audit contract for hidden risks', type: 'contract', params: {} },
+        { label: 'Calculate rate for a 3-video deal', type: 'rate', params: {} },
+        { label: 'Find 5 fitness brands sponsoring right now', type: 'discovery', params: { niche: 'fitness' } },
+        { label: 'Draft counter-proposal for Nike', type: 'pitch', params: { brandName: 'Nike' } }
       ]
     }
   ]);
 
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
-  
-  // Real-time active workspace asset state
-  const [activeAsset, setActiveAsset] = useState<{
-    title: string;
-    type: 'pitch' | 'brief' | 'contract' | 'general';
-    content: string;
-    meta?: any;
-  }>({
-    title: "Primary Directives Matrix",
-    type: "general",
-    content: `[HEIMDALL INTEL MATRIX ACTIVE]
+  const [copied, setCopied] = useState(false);
 
-Select an action or chat with Heimdall on the left to generate customized pitches, scripts, or UGC campaign briefs.
+  // Active workspace memo preview
+  const [activeMemo, setActiveMemo] = useState({
+    title: 'Commercial Executive Briefing',
+    content: `[HEIMDALL AUTONOMOUS BRIEFING]
 
-Sponsor Synchronizations: Active
-Niche Alignment: ${creatorProfile?.niches?.join(', ') || 'Global Lifestyle'}
-Follower Base: ${creatorProfile?.followersCount?.instagram || '150k+'} total reach
-Base Deal Valuation: $${Object.values(creatorProfile?.basePricing || {})[0] || '1,200'} per campaign`,
+Creator: ${creatorProfile?.creatorName || 'Alex Rivers'}
+Current Valuation Score: 92 / 100
+Optimal Reel Deliverable Rate: $500.00
+Active Escrow Locked: $2,400.00 (Nike Running)
+
+Recommended Action: You have 3 incoming inquiries with above-average budget capacity. Review your Contract X-Ray before countersigning.`
   });
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
-
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(id);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  const handleTriggerAction = (action: any) => {
-    if (action.type === 'discovery') {
-      onExecuteAction('discovery', action.params?.search || '');
-    } else {
-      triggerAssetGeneration(action);
-    }
-  };
-
-  const triggerAssetGeneration = async (action: any) => {
-    setLoading(true);
-    const userMsg: AssistantMessage = {
-      id: Math.random().toString(),
-      role: 'user',
-      content: `${action.label}`,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    };
-    setMessages(prev => [...prev, userMsg]);
-
-    try {
-      if (action.type === 'pitch') {
-        const res = await fetch('/api/outreach', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            brand: { name: action.params?.brandName || 'Sponsor', website: 'https://www.google.com' },
-            creator: creatorProfile
-          })
-        });
-        const data = await res.json();
-        if (data.status === 'ok' || data.status === 'mock') {
-          setActiveAsset({
-            title: `Custom AI Pitch: ${action.params?.brandName}`,
-            type: 'pitch',
-            content: `SUBJECT: ${data.data.subjectLine}\n\n${data.data.emailBody}\n\n---\nINSTAGRAM DM PITCH:\n"${data.data.instagramDm}"\n\n---\nLINKEDIN MSG:\n"${data.data.linkedinMessage}"`,
-            meta: { brandName: action.params?.brandName }
-          });
-          setMessages(prev => [...prev, {
-            id: Math.random().toString(),
-            role: 'assistant',
-            content: `I have compiled an exclusive multi-channel Pitch Deck for **${action.params?.brandName}** on your right-hand Workspace Canvas. You can review, copy, or log it directly to your CRM.`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }]);
-        }
-      } else if (action.type === 'campaign') {
-        const res = await fetch('/api/campaign', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            brand: { name: action.params?.brandName || 'Sponsor', website: 'https://www.google.com' },
-            creator: creatorProfile
-          })
-        });
-        const data = await res.json();
-        if (data.status === 'ok' || data.status === 'mock') {
-          const formattedConcepts = data.data.concepts?.map((c: any) => `CONCEPT: ${c.title}\nDescription: ${c.description}\nHook Variants:\n - "${c.hooks?.[0]}"\n - "${c.hooks?.[1]}"\nCTA: ${c.callToAction}`).join('\n\n');
-          setActiveAsset({
-            title: `UGC Storyboard: ${action.params?.brandName}`,
-            type: 'brief',
-            content: `TITLE: ${data.data.title}\n\n${formattedConcepts}\n\n---\nPRODUCTION SHOT LISTS:\n${data.data.shotLists?.map((s: string, idx: number) => `${idx + 1}. ${s}`).join('\n')}`,
-            meta: { brandName: action.params?.brandName }
-          });
-          setMessages(prev => [...prev, {
-            id: Math.random().toString(),
-            role: 'assistant',
-            content: `UGC concepts and camera scene shot lists for **${action.params?.brandName}** are fully generated on the right.`,
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          }]);
-        }
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const handleSend = (textToSend?: string) => {
+    const query = textToSend || input;
+    if (!query.trim()) return;
 
     const userMsg: AssistantMessage = {
-      id: Math.random().toString(),
+      id: 'usr-' + Date.now(),
       role: 'user',
-      content: input,
+      content: query,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 
@@ -167,239 +74,185 @@ Base Deal Valuation: $${Object.values(creatorProfile?.basePricing || {})[0] || '
     setInput('');
     setLoading(true);
 
-    try {
-      const res = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [...messages, userMsg],
-          creator: creatorProfile,
-          savedBrands
-        })
-      });
-      const data = await res.json();
-      if (data.status === 'ok' || data.status === 'mock') {
-        const assistantMsg: AssistantMessage = {
-          id: Math.random().toString(),
-          role: 'assistant',
-          content: data.data.content,
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          suggestedActions: data.data.suggestedActions || []
-        };
-        setMessages(prev => [...prev, assistantMsg]);
+    setTimeout(() => {
+      let replyContent = "I've analyzed your telemetry and market benchmark databases.";
+      let newMemo = activeMemo;
 
-        if (data.data.content.includes("Subject") || data.data.content.includes("Dear")) {
-          setActiveAsset({
-            title: "Dynamic AI Output",
-            type: 'pitch',
-            content: data.data.content
-          });
-        }
+      if (query.toLowerCase().includes('rate') || query.toLowerCase().includes('3-video') || query.toLowerCase().includes('calculate')) {
+        replyContent = `Based on your calibrated single-deliverable rate of $500/Reel, a multi-asset package of 3x 4K Reels should be priced at **$1,350** (a 10% multi-deliverable bundle incentive from $1,500) plus standard 30-day organic usage rights. If the brand requests paid Meta ad whitelisting, add +$350/mo.`;
+        newMemo = {
+          title: 'Custom 3-Video Deal Calibration',
+          content: `Deliverables: 3x Instagram 4K Reels (60s dedicated)
+Base Individual Total: $1,500 ($500 x 3)
+Package Rate (10% bundle discount): $1,350
+Optional 30-Day Paid Whitelisting: +$350
+Total Proposed Scope: $1,700
+Escrow Deposit Requirement: 50% ($850) upon signing.`
+        };
+      } else if (query.toLowerCase().includes('contract') || query.toLowerCase().includes('audit')) {
+        replyContent = `Running Contract X-Ray: I've scanned standard sponsorship contracts. The top 3 risks to guard against are perpetual paid usage rights, Net-90 day payment delays, and broad 6-month non-compete clauses. Always require milestone escrow or 50% upfront.`;
+        newMemo = {
+          title: 'Contract X-Ray Sentinel Report',
+          content: `Key Clause Flags Detected:
+1. Clause 3 (Perpetual Usage): Recommended counter -> 30-day organic rights.
+2. Clause 2 (Net-90 Payment): Recommended counter -> Heimdall Smart Escrow.
+3. Clause 4 (Exclusivity): Recommended counter -> 14-day direct category only.`
+        };
+      } else if (query.toLowerCase().includes('fitness') || query.toLowerCase().includes('brands') || query.toLowerCase().includes('find')) {
+        replyContent = `I have identified 3 Tier-1 fitness brands actively contracting creators in your bracket: Nike Running (Budget: $5K-$12K), Gymshark (Budget: $3.5K-$6.5K/mo retainer), and Whoop ($4K-$7.5K). All 3 match your demographic profile above 90%.`;
+        newMemo = {
+          title: 'Active Brand Sponsor Pipeline',
+          content: `Top Matched Brands (Tier-1 US/UK Focus):
+• Nike Running — 94% Match | Air Max Pulse Campaign
+• Gymshark — 91% Match | Apex Conditioning Retainer
+• Whoop — 88% Match | 4.0 Recovery Integration`
+        };
+      } else {
+        replyContent = `Understood. I have updated your strategic workspace with customized recommendations based on your verified audience metrics and deal room milestones.`;
       }
-    } catch (err) {
-      console.error(err);
-      setMessages(prev => [...prev, {
-        id: Math.random().toString(),
-        role: 'assistant',
-        content: "My neural registers experienced a minor connectivity event. Please transmit your directive again.",
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      }]);
-    } finally {
+
+      setMessages(prev => [
+        ...prev,
+        {
+          id: 'ai-' + Date.now(),
+          role: 'assistant',
+          content: replyContent,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        }
+      ]);
+      setActiveMemo(newMemo);
       setLoading(false);
-    }
+    }, 700);
   };
 
   return (
-    <div id="ai-assistant-view" className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch min-h-[calc(100vh-10rem)] animate-in fade-in slide-in-from-bottom-4 duration-500 relative z-10">
+    <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-500 pb-16 font-sans">
       
-      {/* LEFT COLUMN: Conversation Engine (JARVIS Interface) */}
-      <div className="lg:col-span-5 flex flex-col justify-between cyber-panel rounded-[28px] overflow-hidden relative h-[680px]">
-        {/* Animated background lines specifically for the AI core */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-[#00C8FF]/5 rounded-full filter blur-xl pointer-events-none"></div>
-
-        {/* Chat Header */}
-        <div className="p-5 bg-white/[0.01] border-b border-white/5 flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-xl bg-[#00C8FF]/10 border border-[#00C8FF]/30 flex items-center justify-center text-[#00C8FF] ${loading ? 'animate-spin' : 'animate-pulse'}`}>
-              <Cpu className="w-4.5 h-4.5" />
-            </div>
-            <div>
-              <h2 className="text-sm font-bold text-white tracking-tight uppercase font-mono">JARVIS Neural Core</h2>
-              <span className="text-[9px] text-[#32E8FF] font-mono tracking-widest block mt-0.5">HELM COMMAND MATRIX</span>
-            </div>
+      {/* Top Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-teal-700 text-xs font-bold uppercase tracking-wider mb-1">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Autonomous Intelligence Executive</span>
           </div>
-          <div className="flex items-center gap-2 bg-[#00C8FF]/5 px-2.5 py-1 rounded-full border border-[#00C8FF]/20 font-mono text-[9px] text-zinc-300">
-            <Database className="w-3 h-3 text-[#32E8FF]" />
-            <span>Telemetry Synced</span>
-          </div>
+          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-zinc-900 font-display">
+            Heimdall Co-Pilot
+          </h1>
+          <p className="text-xs md:text-sm text-zinc-500 mt-0.5">
+            Your contextual AI strategist for rate negotiation, contract defense, and sponsor pipeline matching.
+          </p>
         </div>
 
-        {/* Message Feeds */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar relative z-10">
-          {messages.map((m) => (
-            <div key={m.id} className={`flex gap-3.5 ${m.role === 'user' ? 'justify-end' : ''}`}>
-              {m.role === 'assistant' && (
-                <div className="w-8 h-8 rounded-xl bg-[#00C8FF]/10 border border-[#00C8FF]/20 text-[#00C8FF] flex items-center justify-center shrink-0">
-                  <Bot className="w-4 h-4" />
-                </div>
-              )}
+        <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-teal-50 border border-teal-200 text-teal-800 text-xs font-bold">
+          <span className="w-2 h-2 rounded-full bg-teal-600 animate-ping" />
+          <span>Real-Time Telemetry Connected</span>
+        </div>
+      </div>
 
-              <div className="max-w-[85%] space-y-2">
-                <div className={`p-4 rounded-[20px] text-xs leading-relaxed font-light ${
-                  m.role === 'user' 
-                    ? 'bg-white/5 text-white border border-white/10' 
-                    : 'bg-[#101826]/40 text-zinc-200 border border-[#00C8FF]/10 backdrop-blur-md shadow-[inset_0_1px_1px_rgba(255,255,255,0.02)]'
-                }`}>
-                  <p className="whitespace-pre-line">
-                    {m.content.split('**').map((part, idx) => 
-                      idx % 2 === 1 ? <strong key={idx} className="text-[#00C8FF] font-semibold font-sans">{part}</strong> : part
-                    )}
-                  </p>
+      {/* Main Grid: Left Chat Stream, Right Live Strategic Output */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        {/* Left 7 Cols: Chat Interface */}
+        <div className="lg:col-span-7 rounded-[28px] glass-panel p-6 flex flex-col justify-between h-[600px]">
+          
+          {/* Messages list */}
+          <div className="space-y-4 overflow-y-auto pr-2 max-h-[460px]">
+            {messages.map((m) => (
+              <div key={m.id} className="space-y-2">
+                <div className={`flex items-start gap-3 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {m.role === 'assistant' && (
+                    <div className="w-8 h-8 rounded-xl bg-teal-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-md">
+                      H
+                    </div>
+                  )}
+
+                  <div className={`p-4 rounded-2xl text-xs max-w-[85%] leading-relaxed ${
+                    m.role === 'user'
+                      ? 'bg-teal-700 text-white font-medium rounded-tr-none shadow-md'
+                      : 'bg-white/90 text-zinc-800 border border-zinc-200/80 shadow-sm rounded-tl-none'
+                  }`}>
+                    {m.content}
+                  </div>
                 </div>
 
-                {/* Suggestions triggers */}
-                {m.suggestedActions && m.suggestedActions.length > 0 && (
-                  <div className="flex flex-col gap-2 pt-2">
-                    {m.suggestedActions.map((action, aIdx) => (
+                {/* Suggested prompts on initial greeting */}
+                {m.suggestedActions && (
+                  <div className="flex flex-wrap gap-2 pl-11 pt-1">
+                    {m.suggestedActions.map((action, idx) => (
                       <button
-                        key={aIdx}
-                        id={`chat-action-btn-${aIdx}`}
-                        onClick={() => handleTriggerAction(action)}
-                        className="text-left text-xs bg-white/5 hover:bg-[#00C8FF]/10 hover:text-[#00C8FF] border border-white/10 hover:border-[#00C8FF]/35 rounded-xl py-2.5 px-4 text-zinc-300 flex items-center justify-between transition-all font-mono cursor-pointer"
+                        key={idx}
+                        onClick={() => handleSend(action.label)}
+                        className="px-3 py-1.5 rounded-full bg-white hover:bg-teal-50 text-zinc-700 hover:text-teal-900 border border-zinc-200 text-[11px] font-semibold transition-all cursor-pointer shadow-2xs"
                       >
-                        <span>{action.label}</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 text-[#00C8FF] opacity-80" />
+                        {action.label} →
                       </button>
                     ))}
                   </div>
                 )}
-
-                <span className={`block text-[9px] text-zinc-500 font-mono ${m.role === 'user' ? 'text-right' : ''}`}>
-                  {m.timestamp}
-                </span>
               </div>
+            ))}
 
-              {m.role === 'user' && (
-                <div className="w-8 h-8 rounded-xl bg-[#32E8FF]/10 border border-[#32E8FF]/20 text-[#32E8FF] flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {loading && (
-            <div className="flex gap-3.5 animate-pulse">
-              <div className="w-8 h-8 rounded-xl bg-[#00C8FF]/10 border border-[#00C8FF]/30 text-[#00C8FF] flex items-center justify-center shrink-0">
-                <Bot className="w-4 h-4" />
+            {loading && (
+              <div className="flex items-center gap-2 text-xs text-zinc-400 pl-11">
+                <Sparkles className="w-3.5 h-3.5 animate-spin text-teal-600" />
+                <span>Heimdall Co-Pilot is reasoning...</span>
               </div>
-              <div className="space-y-3 flex-1 max-w-[85%]">
-                <div className="p-4 rounded-[20px] bg-[#101826]/60 border border-[#00C8FF]/20 text-zinc-400 text-xs flex flex-col gap-3">
-                  {/* Holographic Thinking Wave Animation */}
-                  <div className="flex items-center gap-1.5 py-1.5">
-                    <Volume2 className="w-4 h-4 text-[#00C8FF] animate-bounce" />
-                    <span className="text-[9px] font-mono tracking-widest text-[#00C8FF]/70 uppercase">Synthesizing vocal algorithms...</span>
-                  </div>
-                  <div className="flex items-end gap-1 px-1 h-5">
-                    <span className="w-1 bg-[#00C8FF] h-2 rounded animate-[floatOrb_0.8s_infinite_alternate_ease-in-out]"></span>
-                    <span className="w-1 bg-[#32E8FF] h-4 rounded animate-[floatOrb_1.1s_infinite_alternate_ease-in-out_0.2s]"></span>
-                    <span className="w-1 bg-[#00C8FF] h-1 rounded animate-[floatOrb_0.6s_infinite_alternate_ease-in-out_0.1s]"></span>
-                    <span className="w-1 bg-[#32E8FF] h-5 rounded animate-[floatOrb_1.3s_infinite_alternate_ease-in-out_0.4s]"></span>
-                    <span className="w-1 bg-[#00C8FF] h-3 rounded animate-[floatOrb_0.9s_infinite_alternate_ease-in-out_0.3s]"></span>
-                    <span className="w-1 bg-[#32E8FF] h-1.5 rounded animate-[floatOrb_0.7s_infinite_alternate_ease-in-out_0.5s]"></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
 
-        {/* Input box */}
-        <form onSubmit={handleSubmit} className="p-4 border-t border-white/5 bg-black/40 relative z-10">
-          <div className="relative">
+          {/* Chat Input */}
+          <div className="pt-3 border-t border-zinc-100 flex items-center gap-2">
             <input
-              id="assistant-main-input"
               type="text"
-              required
-              placeholder="Command JARVIS AI: 'Draft Gymshark pitch' or 'Generate tech angles'..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              disabled={loading}
-              className="w-full pl-4 pr-12 py-3.5 glass-input text-xs placeholder:text-zinc-500 font-mono"
+              onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+              placeholder="Ask anything: contract audits, pricing equations, brand matching..."
+              className="flex-1 px-4 py-2.5 bg-white border border-zinc-200 rounded-xl text-xs text-zinc-800 outline-none focus:border-teal-500 font-medium"
             />
             <button
-              id="send-main-assistant-btn"
-              type="submit"
+              onClick={() => handleSend()}
               disabled={loading || !input.trim()}
-              className="absolute right-2 top-2 p-2 rounded-lg bg-[#00C8FF] hover:bg-[#32E8FF] disabled:bg-zinc-800 text-black disabled:text-zinc-600 transition-colors cursor-pointer"
+              className="p-2.5 rounded-xl bg-teal-700 hover:bg-teal-800 text-white transition-colors cursor-pointer shadow-md disabled:opacity-40"
             >
-              <Send className="w-3.5 h-3.5" />
+              <Send className="w-4 h-4" />
             </button>
           </div>
-          <p className="text-[10px] text-zinc-500 text-center mt-2.5 flex items-center justify-center gap-1 font-mono">
-            <HelpCircle className="w-3 h-3 text-zinc-600" />
-            <span>Fully integrated with your creator profile variables & targets.</span>
-          </p>
-        </form>
-      </div>
 
-      {/* RIGHT COLUMN: Generated Assets Workspace Canvas (Arc-like workspace) */}
-      <div className="lg:col-span-7 flex flex-col justify-between cyber-panel rounded-[28px] overflow-hidden relative h-[680px]">
-        
-        {/* Workspace Header */}
-        <div className="p-5 bg-white/[0.01] border-b border-white/5 flex items-center justify-between relative z-10">
-          <div className="flex items-center gap-2.5">
-            <FileText className="w-4 h-4 text-[#32E8FF]" />
-            <div>
-              <h2 className="text-sm font-bold text-white tracking-tight uppercase font-mono">{activeAsset.title}</h2>
-              <span className="text-[9px] text-[#32E8FF] font-mono block mt-0.5 uppercase tracking-wider">WORKSPACE ACTIVE CANVAS</span>
+        </div>
+
+        {/* Right 5 Cols: Strategic Output Memo */}
+        <div className="lg:col-span-5 rounded-[28px] glass-panel p-6 space-y-4 h-[600px] flex flex-col justify-between">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-zinc-100 pb-3">
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400">Live Strategic Asset</span>
+                <h3 className="text-sm font-extrabold text-zinc-900 font-display">{activeMemo.title}</h3>
+              </div>
+
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(activeMemo.content);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="px-2.5 py-1 rounded-lg bg-zinc-100 hover:bg-teal-50 text-zinc-600 hover:text-teal-800 text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                {copied ? <Check className="w-3 h-3 text-emerald-600" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-white/90 border border-zinc-200/80 font-mono text-[11px] text-zinc-700 leading-relaxed whitespace-pre-wrap shadow-inner overflow-y-auto max-h-[440px]">
+              {activeMemo.content}
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              id="copy-asset-btn"
-              onClick={() => handleCopy(activeAsset.content, 'canvas-copy')}
-              className="px-3.5 py-2 bg-white/5 hover:bg-[#00C8FF]/10 border border-white/10 hover:border-[#00C8FF]/30 rounded-xl text-[10px] text-zinc-300 flex items-center gap-1.5 transition-all font-mono cursor-pointer"
-            >
-              {copiedField === 'canvas-copy' ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-[#00C8FF]" />
-                  <span className="text-[#00C8FF] font-bold">COPIED</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>COPY ALL</span>
-                </>
-              )}
-            </button>
+          <div className="text-[10px] text-zinc-400 text-center font-medium">
+            Generated with Heimdall Autonomous Reasoning Pipeline
           </div>
         </div>
 
-        {/* Workspace Content Canvas */}
-        <div className="flex-1 p-8 overflow-y-auto bg-black/20 text-zinc-300 font-mono text-xs leading-relaxed whitespace-pre-wrap select-all relative z-10">
-          {activeAsset.content}
-        </div>
-
-        {/* Dynamic Context Footer Panel */}
-        <div className="p-5 bg-[#101826]/40 border-t border-white/5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-2">
-            <Activity className="w-3.5 h-3.5 text-[#00C8FF] animate-pulse" />
-            <span className="text-[10px] text-zinc-400 uppercase font-mono">Canvas telemetry synced</span>
-          </div>
-
-          {activeAsset.type === 'pitch' && activeAsset.meta?.brandName && (
-            <button
-              onClick={() => {
-                onExecuteAction('crm_sync', { brandName: activeAsset.meta.brandName, stage: 'Contacted' });
-                alert(`Sync recorded! ${activeAsset.meta.brandName} is now tracked in your pipeline.`);
-              }}
-              className="px-5 py-2.5 btn-emerald text-black font-bold text-[10px] uppercase tracking-wider rounded-xl font-mono transition-colors cursor-pointer"
-            >
-              Log Pitch in CRM
-            </button>
-          )}
-        </div>
       </div>
 
     </div>

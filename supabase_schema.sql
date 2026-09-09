@@ -118,3 +118,138 @@ CREATE POLICY "Users can manage their own notifications" ON "notifications"
   FOR ALL
   USING (auth.uid()::text = "userId")
   WITH CHECK (auth.uid()::text = "userId");
+
+
+-- 6. CONNECTED SOCIAL ACCOUNTS TABLE
+CREATE TABLE IF NOT EXISTS "social_accounts" (
+  "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId" TEXT NOT NULL,
+  "platform" TEXT NOT NULL, -- 'instagram', 'tiktok', 'youtube', 'x', 'linkedin', etc.
+  "accountId" TEXT NOT NULL,
+  "username" TEXT NOT NULL,
+  "profileUrl" TEXT,
+  "profileImage" TEXT,
+  "followerCount" INTEGER DEFAULT 0,
+  "followingCount" INTEGER DEFAULT 0,
+  "postsCount" INTEGER DEFAULT 0,
+  "engagementRate" NUMERIC(5,2) DEFAULT 0.0,
+  "reach" INTEGER DEFAULT 0,
+  "impressions" INTEGER DEFAULT 0,
+  "averageViews" INTEGER DEFAULT 0,
+  "averageLikes" INTEGER DEFAULT 0,
+  "averageComments" INTEGER DEFAULT 0,
+  "averageShares" INTEGER DEFAULT 0,
+  "category" TEXT DEFAULT 'General',
+  "audienceDemographics" JSONB DEFAULT '{}'::jsonb,
+  "lastSyncTimestamp" TEXT NOT NULL,
+  "connectionStatus" TEXT DEFAULT 'connected',
+  "authType" TEXT DEFAULT 'oauth',
+  "historicalGrowthRate" NUMERIC(5,2) DEFAULT 0.0
+);
+
+ALTER TABLE "social_accounts" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own social accounts" ON "social_accounts"
+  FOR ALL
+  USING (auth.uid()::text = "userId")
+  WITH CHECK (auth.uid()::text = "userId");
+
+
+-- 7. SOCIAL METRICS SNAPSHOTS TABLE (Historical Snapshots for Tracking Growth)
+CREATE TABLE IF NOT EXISTS "social_metrics_snapshots" (
+  "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId" TEXT NOT NULL,
+  "platform" TEXT NOT NULL,
+  "timestamp" TEXT NOT NULL,
+  "dateLabel" TEXT NOT NULL,
+  "followerCount" INTEGER NOT NULL,
+  "engagementRate" NUMERIC(5,2) NOT NULL,
+  "averageViews" INTEGER NOT NULL,
+  "reach" INTEGER DEFAULT 0,
+  "impressions" INTEGER DEFAULT 0,
+  "source" TEXT NOT NULL,
+  "changeClassification" TEXT DEFAULT 'NORMAL', -- 'NORMAL', 'SIGNIFICANT', 'MAJOR', 'BREAKOUT'
+  "deltaFollowers" INTEGER DEFAULT 0,
+  "deltaViews" INTEGER DEFAULT 0,
+  "deltaEngagement" NUMERIC(5,2) DEFAULT 0.0,
+  "notes" TEXT
+);
+
+ALTER TABLE "social_metrics_snapshots" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own snapshots" ON "social_metrics_snapshots"
+  FOR ALL
+  USING (auth.uid()::text = "userId")
+  WITH CHECK (auth.uid()::text = "userId");
+
+
+-- 8. DYNAMIC RATE CARDS TABLE
+CREATE TABLE IF NOT EXISTS "rate_cards" (
+  "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId" TEXT NOT NULL,
+  "serviceKey" TEXT NOT NULL,
+  "name" TEXT NOT NULL,
+  "platform" TEXT NOT NULL,
+  "deliverableType" TEXT NOT NULL,
+  "currentPrice" INTEGER NOT NULL,
+  "previousPrice" INTEGER NOT NULL,
+  "recommendedPrice" INTEGER NOT NULL,
+  "priceChangePercentage" NUMERIC(5,2) DEFAULT 0.0,
+  "pricingRationale" TEXT NOT NULL,
+  "confidenceScore" INTEGER DEFAULT 95,
+  "lastUpdated" TEXT NOT NULL,
+  "status" TEXT DEFAULT 'active',
+  "marketBenchmarkRange" JSONB DEFAULT '{"min": 100, "max": 1000}'::jsonb
+);
+
+ALTER TABLE "rate_cards" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own rate cards" ON "rate_cards"
+  FOR ALL
+  USING (auth.uid()::text = "userId")
+  WITH CHECK (auth.uid()::text = "userId");
+
+
+-- 9. RATE CARD PROPOSALS TABLE
+CREATE TABLE IF NOT EXISTS "rate_card_proposals" (
+  "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId" TEXT NOT NULL,
+  "detectedChangeType" TEXT NOT NULL,
+  "triggerEvent" TEXT NOT NULL,
+  "detectedAt" TEXT NOT NULL,
+  "sourcePlatform" TEXT NOT NULL,
+  "metricsSummary" JSONB NOT NULL,
+  "services" JSONB NOT NULL,
+  "geminiAnalysis" TEXT NOT NULL,
+  "status" TEXT DEFAULT 'pending', -- 'pending', 'accepted', 'edited', 'rejected'
+  "nicheEvolutionRecommendation" JSONB DEFAULT NULL
+);
+
+ALTER TABLE "rate_card_proposals" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own proposals" ON "rate_card_proposals"
+  FOR ALL
+  USING (auth.uid()::text = "userId")
+  WITH CHECK (auth.uid()::text = "userId");
+
+
+-- 10. AUDIT LOGS TABLE
+CREATE TABLE IF NOT EXISTS "audit_logs" (
+  "id" TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  "userId" TEXT NOT NULL,
+  "timestamp" TEXT NOT NULL,
+  "eventType" TEXT NOT NULL,
+  "source" TEXT NOT NULL,
+  "title" TEXT NOT NULL,
+  "details" TEXT NOT NULL,
+  "userAction" TEXT,
+  "deltaSummary" TEXT
+);
+
+ALTER TABLE "audit_logs" ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own audit logs" ON "audit_logs"
+  FOR ALL
+  USING (auth.uid()::text = "userId")
+  WITH CHECK (auth.uid()::text = "userId");
+

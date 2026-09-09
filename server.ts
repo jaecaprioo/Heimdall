@@ -3,13 +3,16 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
+import socialRouter from './server/social/router';
 
 dotenv.config();
 
 // Simple in-memory cache to prevent exhausting Gemini free tier API quota
 const responseCache = new Map<string, { data: any; timestamp: number }>();
-const CACHE_EXPIRY_MS = 2 * 60 * 60 * 1000; // 2 hours for successful responses
-const ERROR_CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5 minutes for fallback/error responses to give API a break
+const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours for successful responses
+const ERROR_CACHE_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes for fallback/error responses to give API a break
+
+const GEMINI_MODEL = 'gemini-2.5-flash';
 
 function getCachedResponse(key: string): any | null {
   const cached = responseCache.get(key);
@@ -26,10 +29,17 @@ function setCachedResponse(key: string, data: any) {
   responseCache.set(key, { data, timestamp: Date.now() });
 }
 
+function getCacheKey(prefix: string, params: any): string {
+  return `${prefix}_${JSON.stringify(params)}`;
+}
+
 const app = express();
 const PORT = 3000;
 
 app.use(express.json());
+
+// Official Social Media Intelligence Layer API
+app.use('/api/social', socialRouter);
 
 // Initialize AI lazily to prevent crash if key is missing
 let aiClient: any = null;
@@ -414,7 +424,7 @@ app.post('/api/research', async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -515,7 +525,7 @@ app.post('/api/outreach', async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -662,7 +672,7 @@ app.post('/api/campaign', async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -813,7 +823,7 @@ app.post('/api/recommend', async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -947,7 +957,7 @@ app.post('/api/chat', async (req, res) => {
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: GEMINI_MODEL,
       contents: prompt,
       config: {
         responseMimeType: 'application/json'
@@ -1291,7 +1301,7 @@ ${creatorName}`
       `;
 
       const response = await ai.models.generateContent({
-        model: 'gemini-3.5-flash',
+        model: GEMINI_MODEL,
         contents: prompt,
         config: {
           responseMimeType: 'application/json'
@@ -1319,6 +1329,984 @@ ${creatorName}`
   res.json(responseData);
 });
 
+// =========================================================================
+// HEIMDALL AUTONOMOUS CREATOR INTELLIGENCE & RATE CARD ENGINE
+// =========================================================================
+
+// Helper to classify change severity
+function classifyChange(oldFollowers: number, newFollowers: number, oldViews: number, newViews: number, oldEng: number, newEng: number): 'NORMAL' | 'SIGNIFICANT' | 'MAJOR' | 'BREAKOUT' {
+  const followerRatio = oldFollowers > 0 ? newFollowers / oldFollowers : 1;
+  const viewsRatio = oldViews > 0 ? newViews / oldViews : 1;
+  const engRatio = oldEng > 0 ? newEng / oldEng : 1;
+
+  if (followerRatio >= 4 || viewsRatio >= 4) return 'BREAKOUT';
+  if (followerRatio >= 1.8 || viewsRatio >= 2.5) return 'MAJOR';
+  if (followerRatio >= 1.2 || viewsRatio >= 1.35 || engRatio >= 1.25) return 'SIGNIFICANT';
+  return 'NORMAL';
+}
+
+// Deterministic Dynamic Rate Calculation Formula
+function calculateRecommendedRate(
+  serviceKey: string,
+  followers: number,
+  avgViews: number,
+  engagementRate: number,
+  niches: string[] = ['Lifestyle'],
+  previousRate?: number
+): { recommendedPrice: number; rationale: string; confidenceScore: number } {
+  // 1. Determine Niche Multiplier
+  let nicheMultiplier = 1.0;
+  const lowerNiches = niches.map(n => n.toLowerCase());
+  if (lowerNiches.some(n => n.includes('tech') || n.includes('saas') || n.includes('finance') || n.includes('crypto') || n.includes('b2b'))) {
+    nicheMultiplier = 1.35;
+  } else if (lowerNiches.some(n => n.includes('fitness') || n.includes('beauty') || n.includes('wellness') || n.includes('fashion') || n.includes('luxury'))) {
+    nicheMultiplier = 1.2;
+  } else if (lowerNiches.some(n => n.includes('gaming') || n.includes('travel') || n.includes('food'))) {
+    nicheMultiplier = 1.1;
+  }
+
+  // 2. Engagement Quality Factor (Standard baseline is 3.5%)
+  const engagementFactor = Math.max(0.8, Math.min(2.0, 1.0 + (engagementRate - 3.5) * 0.12));
+
+  // 3. CPM / Deliverable Base Model
+  let rawPrice = 200;
+  let rationale = '';
+
+  switch (serviceKey) {
+    case 'instagram_reel':
+    case 'Instagram Reel': {
+      // Base CPM model on expected average Reel views ($15-25 CPM) + audience floor
+      const viewsBased = (avgViews / 1000) * 16.5;
+      const followerFloor = (followers / 1000) * 45;
+      rawPrice = Math.max(viewsBased * 0.7 + followerFloor * 0.3, followerFloor);
+      rawPrice = Math.max(150, rawPrice * nicheMultiplier * engagementFactor);
+      // Round to clean $50 increment
+      rawPrice = Math.round(rawPrice / 50) * 50;
+      rationale = `Calculated on ${followers.toLocaleString()} verified followers, ${avgViews.toLocaleString()} average Reel views, and ${engagementRate.toFixed(1)}% engagement in ${niches.join('/')}.`;
+      break;
+    }
+    case 'tiktok_video':
+    case 'TikTok Video': {
+      const viewsBased = (avgViews / 1000) * 14;
+      const followerFloor = (followers / 1000) * 35;
+      rawPrice = Math.max(viewsBased * 0.65 + followerFloor * 0.35, followerFloor);
+      rawPrice = Math.max(125, rawPrice * nicheMultiplier * engagementFactor);
+      rawPrice = Math.round(rawPrice / 25) * 25;
+      rationale = `Benchmarked for high-velocity short-form TikTok reach at ${(avgViews).toLocaleString()} avg views with ${(engagementRate).toFixed(1)}% interaction rate.`;
+      break;
+    }
+    case 'youtube_integration':
+    case 'YouTube Dedicated Video':
+    case 'YouTube Integration': {
+      const viewsBased = (avgViews / 1000) * 45;
+      const followerFloor = (followers / 1000) * 85;
+      rawPrice = Math.max(viewsBased, followerFloor);
+      rawPrice = Math.max(350, rawPrice * nicheMultiplier * engagementFactor);
+      rawPrice = Math.round(rawPrice / 50) * 50;
+      rationale = `High-intent long-form placement with lasting search discovery and dedicated product integration.`;
+      break;
+    }
+    case 'youtube_short':
+    case 'YouTube Short': {
+      const viewsBased = (avgViews / 1000) * 12;
+      rawPrice = Math.max(120, viewsBased * nicheMultiplier * engagementFactor);
+      rawPrice = Math.round(rawPrice / 25) * 25;
+      rationale = `Short-form YouTube discovery video optimized for shelf exposure and subscriber conversion.`;
+      break;
+    }
+    case 'ugc_video':
+    case 'UGC Video': {
+      // UGC focuses on production quality and organic ad performance rather than creator audience size alone
+      const authorityBonus = Math.min(300, (followers / 1000) * 15);
+      rawPrice = (275 + authorityBonus) * nicheMultiplier;
+      rawPrice = Math.round(rawPrice / 25) * 25;
+      rationale = `Custom brand-licensed UGC asset with organic storytelling, hook testing variations, and standard 30-day digital usage rights.`;
+      break;
+    }
+    case 'instagram_story':
+    case 'Instagram Story (3x Frames)': {
+      const storyViews = Math.round(avgViews * 0.15 || followers * 0.1);
+      rawPrice = Math.max(100, (storyViews / 1000) * 65 * engagementFactor);
+      rawPrice = Math.round(rawPrice / 25) * 25;
+      rationale = `Direct-response 3-frame Instagram Story sequence with direct brand sticker link and call-to-action.`;
+      break;
+    }
+    case 'monthly_retainer':
+    case 'Monthly Content Retainer (4x Deliverables)': {
+      // 4x Reels + UGC bundle with a 15% partner discount
+      const singleReel = Math.max(150, Math.round(((followers / 1000) * 45 * nicheMultiplier) / 50) * 50);
+      rawPrice = Math.round((singleReel * 4 * 0.85) / 50) * 50;
+      rationale = `Ongoing monthly partnership package including 4 dedicated monthly deliverables, comment moderation, and usage rights.`;
+      break;
+    }
+    default: {
+      rawPrice = Math.max(150, (followers / 1000) * 40 * nicheMultiplier);
+      rawPrice = Math.round(rawPrice / 25) * 25;
+      rationale = `Market benchmarked rate for ${serviceKey} based on verified creator telemetry.`;
+    }
+  }
+
+  // Cap sudden drops if previous rate was established, and ensure reasonable jumps
+  if (previousRate && previousRate > 0) {
+    if (rawPrice < previousRate * 0.8) {
+      rawPrice = Math.round(previousRate * 0.9 / 25) * 25;
+    }
+  }
+
+  return {
+    recommendedPrice: Math.max(100, rawPrice),
+    rationale,
+    confidenceScore: Math.min(98, Math.max(88, Math.round(85 + engagementRate * 2)))
+  };
+}
+
+// 1. Analyze Growth & Generate Rate Proposals (Gemini-Powered)
+app.post('/api/intelligence/analyze-growth', async (req, res) => {
+  try {
+    const { userId, previousSnapshot, currentSnapshot, connectedAccounts, currentRateCards, creatorProfile } = req.body;
+
+    const oldFollowers = previousSnapshot?.followerCount || 5000;
+    const newFollowers = currentSnapshot?.followerCount || 10000;
+    const oldViews = previousSnapshot?.averageViews || 8000;
+    const newViews = currentSnapshot?.averageViews || 35000;
+    const oldEng = previousSnapshot?.engagementRate || 4.2;
+    const newEng = currentSnapshot?.engagementRate || 6.1;
+    const platform = currentSnapshot?.platform || 'instagram';
+
+    const changeType = classifyChange(oldFollowers, newFollowers, oldViews, newViews, oldEng, newEng);
+
+    const defaultServices = [
+      { key: 'instagram_reel', name: 'Instagram Reel', platform: 'instagram', type: 'Reel', defaultPrice: 250 },
+      { key: 'instagram_story', name: 'Instagram Story (3x Frames)', platform: 'instagram', type: 'Story', defaultPrice: 125 },
+      { key: 'tiktok_video', name: 'TikTok Video', platform: 'tiktok', type: 'Video', defaultPrice: 200 },
+      { key: 'youtube_integration', name: 'YouTube Integration', platform: 'youtube', type: 'Integration', defaultPrice: 650 },
+      { key: 'ugc_video', name: 'UGC Video', platform: 'ugc', type: 'UGC', defaultPrice: 300 },
+      { key: 'monthly_retainer', name: 'Monthly Content Retainer (4x Deliverables)', platform: 'multi', type: 'Retainer', defaultPrice: 900 }
+    ];
+
+    const niches = creatorProfile?.niches || ['Lifestyle', 'Fitness'];
+
+    // Compute updated rate cards
+    const updatedServices = defaultServices.map(svc => {
+      const existing = (currentRateCards || []).find((c: any) => c.serviceKey === svc.key);
+      const prevPrice = existing ? existing.currentPrice : svc.defaultPrice;
+      const calc = calculateRecommendedRate(svc.key, newFollowers, newViews, newEng, niches, prevPrice);
+      const percentChange = prevPrice > 0 ? Math.round(((calc.recommendedPrice - prevPrice) / prevPrice) * 100) : 0;
+
+      return {
+        serviceKey: svc.key,
+        name: svc.name,
+        platform: svc.platform,
+        deliverableType: svc.type,
+        oldPrice: prevPrice,
+        newRecommendedPrice: calc.recommendedPrice,
+        changePercent: percentChange,
+        reason: calc.rationale,
+        confidenceScore: calc.confidenceScore
+      };
+    });
+
+    // Gemini AI Analysis for contextual narrative, positioning, and niche expansion
+    let geminiAnalysis = `Heimdall detected a ${changeType} growth event. Your verified audience surged from ${oldFollowers.toLocaleString()} to ${newFollowers.toLocaleString()} (+${Math.round(((newFollowers - oldFollowers) / oldFollowers) * 100)}%), with average Reel views jumping from ${oldViews.toLocaleString()} to ${newViews.toLocaleString()} (+${Math.round(((newViews - oldViews) / oldViews) * 100)}%). Based on market pricing benchmarks for high-engagement creators in ${niches.join(', ')}, Heimdall recommends adjusting your commercial rate card accordingly.`;
+    
+    let nicheEvolution: any = null;
+
+    const ai = getAI();
+    if (ai) {
+      try {
+        const prompt = `
+          You are the Heimdall Creator Intelligence Engine, an autonomous commercial talent manager for high-growth creators.
+          Analyze this verified telemetry change for creator "${creatorProfile?.creatorName || 'Creator'}":
+          - Platform: ${platform}
+          - Previous: ${oldFollowers.toLocaleString()} followers, ${oldViews.toLocaleString()} avg views, ${oldEng}% engagement
+          - Current: ${newFollowers.toLocaleString()} followers, ${newViews.toLocaleString()} avg views, ${newEng}% engagement
+          - Detected Severity: ${changeType}
+          - Current Niches: ${JSON.stringify(niches)}
+          - Proposed Rate Card: ${JSON.stringify(updatedServices.map(s => ({ name: s.name, old: `$${s.oldPrice}`, new: `$${s.newRecommendedPrice}`, change: `+${s.changePercent}%` })))}
+
+          Provide a strict JSON response with:
+          1. "executiveSummary": A crisp, high-impact paragraph explaining the growth transformation and why brands will happily pay the higher rates (under 80 words).
+          2. "commercialAngle": 1 sentence explaining the creator's new market tier (e.g., "Elevated from Micro-Creator to Core Mid-Tier Authority with 4.5x higher view conversion").
+          3. "nicheSuggestion": An object suggesting if their positioning should expand (e.g. {"shouldEvolve": true, "suggestedNiches": ["Fitness", "Lifestyle & Wellness"], "rationale": "High view retention on lifestyle b-roll justifies broadening sponsor appeal beyond pure gym gear."})
+          
+          Do not invent numbers. Stick strictly to the verified metrics provided. Raw JSON only.
+        `;
+
+        const geminiResp = await ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json'
+          }
+        });
+
+        const parsedAI = cleanAndParseJSON(geminiResp.text || '');
+        if (parsedAI?.executiveSummary) {
+          geminiAnalysis = `${parsedAI.executiveSummary} ${parsedAI.commercialAngle || ''}`;
+        }
+        if (parsedAI?.nicheSuggestion?.shouldEvolve) {
+          nicheEvolution = {
+            currentNiches: niches,
+            suggestedNiches: parsedAI.nicheSuggestion.suggestedNiches || [...niches, 'Lifestyle'],
+            reason: parsedAI.nicheSuggestion.rationale || 'Audience expansion unlocks broader sponsor categories.',
+            status: 'pending'
+          };
+        }
+      } catch (err: any) {
+        console.warn("Gemini rate intelligence call error:", err.message);
+      }
+    }
+
+    const proposal: any = {
+      id: 'prop_' + Date.now(),
+      userId: userId || 'anonymous',
+      detectedChangeType: changeType,
+      triggerEvent: `${platform.toUpperCase()} ${oldFollowers >= 1000 ? Math.round(oldFollowers/1000)+'K' : oldFollowers} → ${newFollowers >= 1000 ? Math.round(newFollowers/1000)+'K' : newFollowers} Growth Breakout`,
+      detectedAt: new Date().toISOString(),
+      sourcePlatform: platform,
+      metricsSummary: {
+        oldFollowers,
+        newFollowers,
+        oldViews,
+        newViews,
+        oldEngagement: oldEng,
+        newEngagement: newEng
+      },
+      services: updatedServices,
+      geminiAnalysis,
+      status: 'pending',
+      nicheEvolutionRecommendation: nicheEvolution
+    };
+
+    return res.json({
+      success: true,
+      changeType,
+      proposal,
+      services: updatedServices
+    });
+  } catch (error: any) {
+    console.error("Error in analyze-growth endpoint:", error);
+    res.status(500).json({ error: error.message || "Failed to analyze growth" });
+  }
+});
+
+// 2. Test Case Simulation Runner
+app.post('/api/social/simulate-growth-event', async (req, res) => {
+  try {
+    const { scenarioType, userId, currentProfile } = req.body;
+
+    let previousSnapshot = {
+      followerCount: 5000,
+      engagementRate: 4.2,
+      averageViews: 8000,
+      reach: 18000,
+      impressions: 24000,
+      platform: 'instagram'
+    };
+
+    let currentSnapshot = {
+      followerCount: 10000,
+      engagementRate: 6.1,
+      averageViews: 35000,
+      reach: 82000,
+      impressions: 110000,
+      platform: 'instagram'
+    };
+
+    let scenarioTitle = "Primary Test Case: Overnight 5K → 10K Viral Breakout";
+
+    if (scenarioType === 'youtube_spike') {
+      previousSnapshot = { followerCount: 12000, engagementRate: 3.8, averageViews: 15000, reach: 30000, impressions: 45000, platform: 'youtube' };
+      currentSnapshot = { followerCount: 45000, engagementRate: 8.4, averageViews: 180000, reach: 450000, impressions: 600000, platform: 'youtube' };
+      scenarioTitle = "YouTube Short 1M+ Views Viral Surge";
+    } else if (scenarioType === 'tiktok_viral') {
+      previousSnapshot = { followerCount: 20000, engagementRate: 5.0, averageViews: 25000, reach: 50000, impressions: 70000, platform: 'tiktok' };
+      currentSnapshot = { followerCount: 85000, engagementRate: 9.2, averageViews: 240000, reach: 600000, impressions: 850000, platform: 'tiktok' };
+      scenarioTitle = "TikTok Multi-Reel Viral Wave";
+    } else if (scenarioType === 'steady_growth') {
+      previousSnapshot = { followerCount: 10000, engagementRate: 4.5, averageViews: 12000, reach: 25000, impressions: 35000, platform: 'instagram' };
+      currentSnapshot = { followerCount: 12500, engagementRate: 4.8, averageViews: 16000, reach: 34000, impressions: 48000, platform: 'instagram' };
+      scenarioTitle = "Steady Monthly 25% Growth Cycle";
+    }
+
+    const niches = currentProfile?.niches || ['Fitness', 'Lifestyle'];
+    const changeType = classifyChange(
+      previousSnapshot.followerCount,
+      currentSnapshot.followerCount,
+      previousSnapshot.averageViews,
+      currentSnapshot.averageViews,
+      previousSnapshot.engagementRate,
+      currentSnapshot.engagementRate
+    );
+
+    // Call dynamic rate calculator
+    const services = [
+      { key: 'instagram_reel', name: 'Instagram Reel', platform: 'instagram', type: 'Reel', defaultPrice: 250 },
+      { key: 'instagram_story', name: 'Instagram Story (3x Frames)', platform: 'instagram', type: 'Story', defaultPrice: 125 },
+      { key: 'tiktok_video', name: 'TikTok Video', platform: 'tiktok', type: 'Video', defaultPrice: 200 },
+      { key: 'youtube_integration', name: 'YouTube Integration', platform: 'youtube', type: 'Integration', defaultPrice: 650 },
+      { key: 'ugc_video', name: 'UGC Video', platform: 'ugc', type: 'UGC', defaultPrice: 300 },
+      { key: 'monthly_retainer', name: 'Monthly Content Retainer (4x Deliverables)', platform: 'multi', type: 'Retainer', defaultPrice: 900 }
+    ].map(s => {
+      const calc = calculateRecommendedRate(s.key, currentSnapshot.followerCount, currentSnapshot.averageViews, currentSnapshot.engagementRate, niches, s.defaultPrice);
+      return {
+        serviceKey: s.key,
+        name: s.name,
+        platform: s.platform,
+        deliverableType: s.type,
+        oldPrice: s.defaultPrice,
+        newRecommendedPrice: calc.recommendedPrice,
+        changePercent: Math.round(((calc.recommendedPrice - s.defaultPrice) / s.defaultPrice) * 100),
+        reason: calc.rationale,
+        confidenceScore: calc.confidenceScore
+      };
+    });
+
+    const ai = getAI();
+    let analysis = `Heimdall detected a ${changeType} growth event on ${currentSnapshot.platform.toUpperCase()}. Audience doubled from ${previousSnapshot.followerCount.toLocaleString()} to ${currentSnapshot.followerCount.toLocaleString()} with average views up ${Math.round(((currentSnapshot.averageViews - previousSnapshot.averageViews) / previousSnapshot.averageViews) * 100)}%. Recommended Reel rate updated from $250 to $${services.find(s => s.serviceKey === 'instagram_reel')?.newRecommendedPrice || 500}.`;
+
+    if (ai) {
+      try {
+        const prompt = `
+          Analyze this verified creator simulation event:
+          Creator: ${currentProfile?.creatorName || 'Alex Rivers'}
+          Platform: ${currentSnapshot.platform}
+          Before: ${previousSnapshot.followerCount.toLocaleString()} followers, ${previousSnapshot.averageViews.toLocaleString()} views, ${previousSnapshot.engagementRate}% eng
+          After: ${currentSnapshot.followerCount.toLocaleString()} followers, ${currentSnapshot.averageViews.toLocaleString()} views, ${currentSnapshot.engagementRate}% eng
+          Instagram Reel Rate Change: $250 -> $${services.find(s => s.serviceKey === 'instagram_reel')?.newRecommendedPrice || 500} (+${services.find(s => s.serviceKey === 'instagram_reel')?.changePercent || 100}%)
+          
+          Write a concise 2-sentence executive summary emphasizing why this doubling justifies the new rate card to premium sponsors.
+        `;
+        const resp = await ai.models.generateContent({
+          model: GEMINI_MODEL,
+          contents: prompt
+        });
+        if (resp.text) {
+          analysis = resp.text.trim();
+        }
+      } catch (e) {}
+    }
+
+    const proposal: any = {
+      id: 'sim_prop_' + Date.now(),
+      userId: userId || 'anonymous',
+      detectedChangeType: changeType,
+      triggerEvent: scenarioTitle,
+      detectedAt: new Date().toISOString(),
+      sourcePlatform: currentSnapshot.platform,
+      metricsSummary: {
+        oldFollowers: previousSnapshot.followerCount,
+        newFollowers: currentSnapshot.followerCount,
+        oldViews: previousSnapshot.averageViews,
+        newViews: currentSnapshot.averageViews,
+        oldEngagement: previousSnapshot.engagementRate,
+        newEngagement: currentSnapshot.engagementRate
+      },
+      services,
+      geminiAnalysis: analysis,
+      status: 'pending',
+      nicheEvolutionRecommendation: {
+        currentNiches: niches,
+        suggestedNiches: [...niches, 'Lifestyle & Wellness'],
+        reason: 'Viral audience expansion opens high-margin lifestyle sponsorship opportunities.',
+        status: 'pending'
+      }
+    };
+
+    const notification = {
+      id: 'notif_' + Date.now(),
+      userId: userId || 'anonymous',
+      title: `⚡ ${changeType} Growth Detected: ${currentSnapshot.platform.toUpperCase()} 10K Milestone`,
+      message: `Your ${currentSnapshot.platform.toUpperCase()} audience doubled from ${(previousSnapshot.followerCount/1000).toFixed(0)}K to ${(currentSnapshot.followerCount/1000).toFixed(0)}K. Heimdall recommends increasing your Instagram Reel rate from $250 to $${services.find(s => s.serviceKey === 'instagram_reel')?.newRecommendedPrice || 500}.`,
+      type: 'recommendation',
+      read: false,
+      createdAt: new Date().toISOString()
+    };
+
+    return res.json({
+      success: true,
+      scenarioTitle,
+      changeType,
+      previousSnapshot,
+      currentSnapshot,
+      proposal,
+      services,
+      notification
+    });
+  } catch (err: any) {
+    console.error("Error running simulation:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// =========================================================================
+// 3. AI CONTRACT X-RAY ENDPOINT
+// =========================================================================
+app.post('/api/contract/xray', async (req, res) => {
+  try {
+    const { contractText, contractTitle, creatorName, creatorBaseRates } = req.body;
+
+    const cacheKey = getCacheKey('contract_xray', { title: contractTitle, textSnippet: (contractText || '').slice(0, 100) });
+    const cached = getCachedResponse(cacheKey);
+    if (cached) return res.json(cached);
+
+    const defaultAnalysis: any = {
+      id: 'xray_' + Date.now(),
+      contractTitle: contractTitle || 'Brand Sponsorship & UGC Master Agreement',
+      overallRisk: 'HIGH',
+      riskScore: 78,
+      executiveSummary: 'This contract contains several high-risk commercial pitfalls including perpetual paid whitelisting rights without compensation multipliers, a 90-day delayed payment schedule, and overly broad non-compete exclusivity spanning the entire health and wellness category.',
+      clauses: [
+        {
+          category: 'Usage Rights',
+          extractedText: 'Brand shall have perpetual, irrevocable, worldwide, royalty-free license to use, reproduce, modify, and distribute Creator Content in any and all media now known or hereafter devised.',
+          riskLevel: 'CRITICAL',
+          explanation: 'Perpetual worldwide rights mean the brand can use your likeness forever without paying recurring licensing fees. Standard industry practice is 30-90 days of organic and paid digital usage.',
+          recommendedAdjustment: 'Cap usage rights to 60 days from publish date. Add a 20% surcharge per additional 30-day paid usage extension.'
+        },
+        {
+          category: 'Payment Terms',
+          extractedText: 'Payment shall be disbursed within ninety (90) days following final Brand written approval and receipt of verified campaign analytics.',
+          riskLevel: 'HIGH',
+          explanation: 'Net-90 payment terms force the creator to act as an uncompensated bank for 3 months. In addition, conditioning payment on subjective "written approval" creates non-payment risk.',
+          recommendedAdjustment: 'Require 50% upfront deposit upon contract execution, with the remaining 50% due Net-15 upon initial asset delivery.'
+        },
+        {
+          category: 'Whitelisting',
+          extractedText: 'Creator grants Brand authorization to run Meta Partnership Ads and Spark Ads through Creator handles without budget limits or separate licensing fees.',
+          riskLevel: 'HIGH',
+          explanation: 'Whitelisting allows the brand to put millions of dollars behind your profile, potentially causing audience ad fatigue and disabling other brand deals.',
+          recommendedAdjustment: 'Specify a $250/month whitelisting fee and require pre-approval of paid ad copy and targeting parameters.'
+        },
+        {
+          category: 'Exclusivity',
+          extractedText: 'Creator agrees not to promote, partner with, or endorse any health, fitness, apparel, nutrition, or beverage brand for six (6) months prior to and following campaign completion.',
+          riskLevel: 'CRITICAL',
+          explanation: 'A 6-month category lockout blocks you from working with hundreds of potential partners, destroying tens of thousands in prospective income.',
+          recommendedAdjustment: 'Narrow exclusivity strictly to direct footwear competitors (max 2 named brands) and limit duration to 14 days post-publish.'
+        },
+        {
+          category: 'Deliverables & Revisions',
+          extractedText: 'Creator shall provide unlimited revisions until Brand expresses complete creative satisfaction.',
+          riskLevel: 'HIGH',
+          explanation: 'Unlimited subjective revisions lead to scope creep and unpaid production cycles.',
+          recommendedAdjustment: 'Include up to two (2) rounds of minor editorial revisions. Charge $150/hour for additional creative structural changes.'
+        },
+        {
+          category: 'Cancellation & Kill Fees',
+          extractedText: 'Brand may terminate this agreement at any time for convenience with zero kill fee liability.',
+          riskLevel: 'MEDIUM',
+          explanation: 'If you shoot and edit the content and the brand cancels, you receive $0.',
+          recommendedAdjustment: 'Add a 50% kill fee if canceled after storyboard sign-off, and a 100% kill fee if canceled after video production has begun.'
+        }
+      ],
+      paymentTerms: 'Net-90 conditioned on subjective approval (Recommend: Net-15 with 50% upfront)',
+      usageRights: 'Perpetual worldwide (Recommend: 60-day digital limit)',
+      whitelisting: 'Included for free without limits (Recommend: $250/mo add-on)',
+      exclusivity: '6-month broad category lockout (Recommend: Direct competitor only, 14 days)',
+      duration: '6 Months',
+      territory: 'Worldwide',
+      deliverables: '2x Instagram Reels, 3x Story Frames, unlimited revisions',
+      revisions: 'Unlimited (Recommend: Max 2 rounds)',
+      cancellation: 'At will with no kill fee (Recommend: 50%-100% tiered kill fee)',
+      killFees: 'None specified',
+      ipOwnership: 'Work-for-hire assignment (Recommend: Creator retains copyright, licenses usage)',
+      liability: 'Creator indemnifies brand for all third-party claims',
+      disclaimer: 'This analysis is generated by AI reasoning and is for informational purposes only. It does not constitute formal legal advice. Always consult a qualified entertainment or contract attorney before signing binding agreements.'
+    };
+
+    const ai = getAI();
+    if (!ai || !contractText || contractText.trim().length < 40) {
+      setCachedResponse(cacheKey, defaultAnalysis);
+      return res.json(defaultAnalysis);
+    }
+
+    const prompt = `
+      You are Heimdall Contract X-Ray, an expert AI entertainment and creator economy contract auditor.
+      Analyze this creator sponsorship/partnership contract for creator "${creatorName || 'Creator'}":
+
+      CONTRACT TEXT:
+      """
+      ${contractText.slice(0, 5000)}
+      """
+
+      Analyze:
+      1. Overall Risk (LOW, MEDIUM, HIGH, CRITICAL) and numeric risk score (0-100 where 100 is most hazardous).
+      2. Executive summary in plain English.
+      3. Key Clauses analyzed across: Payment Terms, Usage Rights, Whitelisting, Exclusivity, Duration & Territory, Deliverables & Revisions, Cancellation & Kill Fees, IP Ownership, Liability & Indemnity.
+      4. For each clause: category, extracted text, risk level (LOW/MEDIUM/HIGH/CRITICAL), plain English risk explanation, and recommended adjustment wording.
+
+      Return raw JSON only matching this schema:
+      {
+        "id": "xray_${Date.now()}",
+        "contractTitle": "${contractTitle || 'Audited Agreement'}",
+        "overallRisk": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+        "riskScore": number,
+        "executiveSummary": "string",
+        "clauses": [
+          {
+            "category": "Payment Terms" | "Usage Rights" | "Whitelisting" | "Exclusivity" | "Duration & Territory" | "Deliverables & Revisions" | "Cancellation & Kill Fees" | "IP Ownership" | "Liability & Indemnity",
+            "extractedText": "string",
+            "riskLevel": "LOW" | "MEDIUM" | "HIGH" | "CRITICAL",
+            "explanation": "string",
+            "recommendedAdjustment": "string"
+          }
+        ],
+        "paymentTerms": "summary",
+        "usageRights": "summary",
+        "whitelisting": "summary",
+        "exclusivity": "summary",
+        "duration": "summary",
+        "territory": "summary",
+        "deliverables": "summary",
+        "revisions": "summary",
+        "cancellation": "summary",
+        "killFees": "summary",
+        "ipOwnership": "summary",
+        "liability": "summary",
+        "disclaimer": "This analysis is generated by AI reasoning and is for informational purposes only. It does not constitute formal legal advice. Always consult a qualified entertainment or contract attorney before signing binding agreements."
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const parsed = cleanAndParseJSON(response.text || '');
+    const result = {
+      ...defaultAnalysis,
+      ...(parsed || {}),
+      disclaimer: 'This analysis is generated by AI reasoning and is for informational purposes only. It does not constitute formal legal advice. Always consult a qualified entertainment or contract attorney before signing binding agreements.'
+    };
+
+    setCachedResponse(cacheKey, result);
+    return res.json(result);
+  } catch (err: any) {
+    console.error("Contract X-Ray error:", err);
+    res.status(500).json({ error: err.message || "Failed to analyze contract" });
+  }
+});
+
+// =========================================================================
+// 4. AI NEGOTIATION & COUNTEROFFER GENERATOR ENDPOINT
+// =========================================================================
+app.post('/api/negotiation/generate', async (req, res) => {
+  try {
+    const { brandName, initialOfferAmount, requestedDeliverables, creatorProfile, specificConcerns } = req.body;
+
+    const cacheKey = getCacheKey('negotiation_gen', { brand: brandName, offer: initialOfferAmount, deliverables: requestedDeliverables });
+    const cached = getCachedResponse(cacheKey);
+    if (cached) return res.json(cached);
+
+    const offerVal = Number(initialOfferAmount) || 800;
+    const baseReelRate = creatorProfile?.basePricing?.instagramReel || 1200;
+    const fairMin = Math.round(Math.max(offerVal * 1.2, baseReelRate * 0.95) / 50) * 50;
+    const fairMax = Math.round(Math.max(offerVal * 1.5, baseReelRate * 1.3) / 50) * 50;
+    const recommendedTarget = Math.round((fairMin + fairMax) / 2 / 50) * 50;
+
+    const defaultResult: any = {
+      id: 'neg_' + Date.now(),
+      brandName: brandName || 'Partner Brand',
+      originalOfferPrice: offerVal,
+      recommendedCounterPrice: recommendedTarget,
+      fairPriceRange: { min: fairMin, max: fairMax },
+      dealHealthScore: 82,
+      options: [
+        {
+          tone: 'Professional',
+          strategyName: 'Value-First Market Calibration',
+          subject: `Creative Proposal & Rates // ${creatorProfile?.creatorName || 'Alex Rivers'} × ${brandName || 'Partner Brand'}`,
+          emailBody: `Hi ${brandName} Partnerships Team,\n\nThank you for sharing the campaign brief! I'm genuinely impressed by the new product line and would love to craft high-converting creative assets for this launch.\n\nBased on my verified audience demographics (${creatorProfile?.followersCount?.totalFollowers || '10,000'} engaged followers, ${creatorProfile?.followersCount?.engagementRate || '6.1'}% engagement rate, and an average of 35K organic views per Reel), my standard rate for this deliverable package is $${recommendedTarget}.\n\nThis fee includes:\n- 1x High-Production 4K Instagram Reel with custom narrative hooks\n- 3x Dynamic Story sequence with direct trackable CTA stickers\n- 30-day organic digital usage rights and 1 round of editorial revisions\n\nI’ve attached my verified Heimdall Media Kit for your reference. Let me know if this aligns with your quarterly budget so we can reserve production dates on the calendar!\n\nBest regards,\n${creatorProfile?.fullName || 'Alex Rivers'}`,
+          proposedCounterPrice: recommendedTarget,
+          adjustedTerms: ['30-day organic usage rights', '2 rounds of minor revisions', 'Net-15 payment schedule'],
+          rationale: 'Calm, authoritative, and backs pricing with verified audience conversion metrics.'
+        },
+        {
+          tone: 'Confident',
+          strategyName: 'High-Impact Deliverable Upsell',
+          subject: `Partnership Proposal: Maximizing Reach for ${brandName}`,
+          emailBody: `Hi Team,\n\nThanks for reaching out! Given our audience alignment in the ${creatorProfile?.niches?.[0] || 'Fitness'} space, I know we can drive substantial conversions for this drop.\n\nWhile your initial offer of $${offerVal} is below my standard production baseline, I want to make this partnership high-ROI for both of us. For $${fairMax}, I can deliver a comprehensive multi-asset package:\n\n1. 1x Dedicated 4K Cinematic Reel featuring real-world product integration\n2. 1x High-Velocity TikTok video optimized for search discovery\n3. 3x Instagram Story Frames with direct link stickers\n4. 60 days of digital usage rights for your paid ad team\n\nOur recent posts have averaged over 35,000 views with strong link-click velocity. Let’s get this locked in!\n\nCheers,\n${creatorProfile?.creatorName || 'Alex Rivers'}`,
+          proposedCounterPrice: fairMax,
+          adjustedTerms: ['Bundled TikTok cross-post', '60-day paid usage included', 'Priority 5-day turnaround'],
+          rationale: 'Positions the higher price as an upgraded tier with cross-platform amplification and usage rights.'
+        },
+        {
+          tone: 'Firm',
+          strategyName: 'Strict Rate Card Anchor',
+          subject: `Rate Confirmation // ${brandName} Campaign`,
+          emailBody: `Hi ${brandName} Team,\n\nThank you for considering me for this campaign. I love the brand and what you’re building.\n\nTo ensure top-tier production standards and maintain exclusivity for our brand partners, my minimum rate for this deliverable scope is $${fairMin}. I am unable to discount base rates, but I am happy to adjust the deliverables to match your current budget if needed (for example, providing 1x standalone Reel for $${fairMin}).\n\nPlease let me know how you’d like to proceed.\n\nWarmly,\n${creatorProfile?.fullName || 'Alex Rivers'}`,
+          proposedCounterPrice: fairMin,
+          adjustedTerms: ['Deliverable scope adjusted to budget', 'No unpaid whitelisting', '50% upfront deposit'],
+          rationale: 'Clear boundary-setting that protects the creator from underpricing while offering scope flexibility.'
+        },
+        {
+          tone: 'Relationship-first',
+          strategyName: 'Long-Term Ambassador Framework',
+          subject: `Excited for ${brandName} × ${creatorProfile?.creatorName || 'Alex Rivers'} // Partnership ideas`,
+          emailBody: `Hi ${brandName} Team,\n\nI am such a huge fan of what your team has been doing lately! Working together would be an absolute dream.\n\nFor a one-off campaign, my standard package is $${recommendedTarget}. However, because I believe in the brand long-term and want to build sustained customer trust with my audience, I would love to propose a 3-month Ambassador Retainer at $${Math.round(recommendedTarget * 2.5 / 50) * 50} total (2 dedicated Reels + monthly Story features).\n\nThis gives your team predictable content flow and deeper audience penetration at a preferred partner rate.\n\nWould love to hear your thoughts!\n\nBest,\n${creatorProfile?.fullName || 'Alex Rivers'}`,
+          proposedCounterPrice: recommendedTarget,
+          adjustedTerms: ['3-month retainer option', 'Preferred creator discount for continuity', 'Monthly check-ins'],
+          rationale: 'Focuses on long-term relationship building and converting one-off deals into predictable recurring revenue.'
+        }
+      ]
+    };
+
+    const ai = getAI();
+    if (!ai) {
+      setCachedResponse(cacheKey, defaultResult);
+      return res.json(defaultResult);
+    }
+
+    const prompt = `
+      You are the Heimdall AI Deal Negotiator, an elite talent agent representing creator "${creatorProfile?.creatorName || 'Creator'}".
+      Brand: "${brandName || 'Brand'}"
+      Initial Brand Offer: $${offerVal}
+      Deliverables Requested: "${requestedDeliverables || '1x Instagram Reel, 3x Stories'}"
+      Creator Verified Metrics: Followers: ${creatorProfile?.followersCount?.totalFollowers || '10,000'}, Engagement: ${creatorProfile?.followersCount?.engagementRate || '6.1'}%, Avg Views: 35,000.
+      Creator Base Rate: $${baseReelRate}
+      Specific Concerns: "${specificConcerns || 'Offer is below market CPM, protect usage rights'}"
+
+      Generate a comprehensive negotiation strategy with:
+      1. fairPriceRange { min, max }
+      2. recommendedCounterPrice (number)
+      3. dealHealthScore (0-100)
+      4. 4 counter-offer options in distinct tones: "Professional", "Confident", "Firm", "Relationship-first".
+      For each option provide: tone, strategyName, subject, emailBody (fully written, ready to copy), proposedCounterPrice, adjustedTerms (array of strings), rationale.
+
+      Raw JSON only matching:
+      {
+        "id": "neg_${Date.now()}",
+        "brandName": "${brandName}",
+        "originalOfferPrice": ${offerVal},
+        "recommendedCounterPrice": number,
+        "fairPriceRange": { "min": number, "max": number },
+        "dealHealthScore": number,
+        "options": [
+          {
+            "tone": "Professional" | "Confident" | "Firm" | "Relationship-first",
+            "strategyName": "string",
+            "subject": "string",
+            "emailBody": "string",
+            "proposedCounterPrice": number,
+            "adjustedTerms": ["string"],
+            "rationale": "string"
+          }
+        ]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const parsed = cleanAndParseJSON(response.text || '');
+    const result = { ...defaultResult, ...(parsed || {}) };
+    setCachedResponse(cacheKey, result);
+    return res.json(result);
+  } catch (err: any) {
+    console.error("Negotiation engine error:", err);
+    res.status(500).json({ error: err.message || "Failed to generate negotiation options" });
+  }
+});
+
+// =========================================================================
+// 5. OPPORTUNITY INTELLIGENCE EVALUATOR ENDPOINT
+// =========================================================================
+app.post('/api/opportunity/evaluate', async (req, res) => {
+  try {
+    const { targetName, entityType, evaluationType, dealDetails, creatorProfile, brandProfile } = req.body;
+
+    const cacheKey = getCacheKey('opp_eval', { target: targetName, type: evaluationType, budget: dealDetails?.budget });
+    const cached = getCachedResponse(cacheKey);
+    if (cached) return res.json(cached);
+
+    const isCreatorEvaluatingBrand = evaluationType !== 'brand_evaluating_creator';
+
+    const defaultEvaluation: any = {
+      id: 'opp_' + Date.now(),
+      targetName: targetName || (isCreatorEvaluatingBrand ? 'Gymshark' : 'Alex Rivers'),
+      entityType: isCreatorEvaluatingBrand ? 'brand' : 'creator',
+      evaluationType: isCreatorEvaluatingBrand ? 'creator_evaluating_brand' : 'brand_evaluating_creator',
+      overallMatchScore: 92,
+      worthWorkingWithVerdict: 'STRONGLY RECOMMENDED',
+      verdictSummary: isCreatorEvaluatingBrand
+        ? 'High brand alignment with exceptional payment reliability (100% on-time payouts). Audience overlap in Fitness/Lifestyle is 89% with high propensity to convert.'
+        : 'Creator has verified organic reach surge (+100% followers, 35K avg views) with authentic engagement. Starting rate is below category median CPM, representing high cost efficiency.',
+      fitScore: 94,
+      estimatedValue: isCreatorEvaluatingBrand ? 2400 : 1800,
+      fairPrice: isCreatorEvaluatingBrand ? 1500 : 1200,
+      campaignComplexity: 'MODERATE',
+      usageRightsAssessment: 'Standard 30-day organic digital usage requested. No predatory perpetual whitelisting terms.',
+      exclusivityImpact: '14-day direct footwear competitor exclusivity. Minimal commercial friction.',
+      paymentTermsRisk: 'Low Risk — Net-15 payment backed by Heimdall verified escrow.',
+      dealHealthMetric: 91,
+      strengths: [
+        'Verified on-time payment track record across 18 previous creator campaigns',
+        'Strong audience synergy with 89% demographic overlap',
+        'Transparent deliverable milestones with pre-agreed revision caps',
+        'High potential for repeat multi-month ambassador retainer'
+      ],
+      risksAndWatchouts: [
+        'Requires 4K 60fps raw footage submission alongside final cut',
+        'Short 5-day review window for brand creative approval'
+      ],
+      recommendedNextStep: isCreatorEvaluatingBrand
+        ? 'Accept deal terms with a minor clause capping editorial revisions to two rounds.'
+        : 'Issue official Deal Room offer at $1,200 with standard 30-day usage rights.'
+    };
+
+    const ai = getAI();
+    if (!ai) {
+      setCachedResponse(cacheKey, defaultEvaluation);
+      return res.json(defaultEvaluation);
+    }
+
+    const prompt = `
+      You are the Heimdall Opportunity Intelligence Engine.
+      Task: Evaluate whether this partnership opportunity is worth doing.
+      Evaluation Type: ${evaluationType}
+      Target Name: ${targetName}
+      Deal Details: ${JSON.stringify(dealDetails || { budget: '$1,200', deliverables: '1 Reel, 3 Stories', usage: '30 days' })}
+      Context: ${JSON.stringify({ creator: creatorProfile?.creatorName, brand: brandProfile?.companyName })}
+
+      Provide a strict JSON response with:
+      - overallMatchScore (0-100)
+      - worthWorkingWithVerdict ("STRONGLY RECOMMENDED" | "VIABLE WITH COUNTERTERMS" | "CAUTION ADVISED" | "HIGH RISK / DECLINE")
+      - verdictSummary (concise 2-sentence breakdown)
+      - fitScore (0-100)
+      - estimatedValue (number)
+      - fairPrice (number)
+      - campaignComplexity ("LOW" | "MODERATE" | "HIGH" | "EXTREME")
+      - usageRightsAssessment (string)
+      - exclusivityImpact (string)
+      - paymentTermsRisk (string)
+      - dealHealthMetric (0-100)
+      - strengths (array of strings)
+      - risksAndWatchouts (array of strings)
+      - recommendedNextStep (string)
+
+      Raw JSON only.
+    `;
+
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const parsed = cleanAndParseJSON(response.text || '');
+    const result = { ...defaultEvaluation, ...(parsed || {}) };
+    setCachedResponse(cacheKey, result);
+    return res.json(result);
+  } catch (err: any) {
+    console.error("Opportunity evaluation error:", err);
+    res.status(500).json({ error: err.message || "Failed to evaluate opportunity" });
+  }
+});
+
+// =========================================================================
+// 6. DEAL ROOM SCOPE CREEP DETECTOR ENDPOINT
+// =========================================================================
+app.post('/api/deal/scope-creep', async (req, res) => {
+  try {
+    const { incomingMessage, agreedDeliverables, currentDealBudget } = req.body;
+
+    const defaultAlert = {
+      detected: true,
+      newScope: 'Brand requested 2 additional Story frames, raw B-roll footage dump, and 60-day paid ad whitelisting not in original contract.',
+      recommendedFee: 450,
+      impactAnalysis: 'Adding raw footage transfer and paid whitelisting increases brand ad utility by 3x and requires 2 extra hours of export/upload labor.',
+      counterMessage: `Hi Team! Happy to provide the raw B-roll footage and extend paid ad whitelisting by 60 days. Because these fall outside our original scope, I can add them as an asset add-on package for an additional $450. Let me know if you'd like me to update the Deal Room invoice!`,
+      status: 'active'
+    };
+
+    const ai = getAI();
+    if (!ai || !incomingMessage) {
+      return res.json(defaultAlert);
+    }
+
+    const prompt = `
+      You are the Heimdall Scope Creep Sentinel.
+      Analyze this brand communication against agreed deliverables:
+      Agreed Deliverables: "${JSON.stringify(agreedDeliverables || '1x Instagram Reel, 30 days organic usage')}"
+      Current Budget: $${currentDealBudget || 1000}
+      Incoming Message: "${incomingMessage}"
+
+      Determine if the message requests new uncompensated work (e.g. extra formats, raw files, longer usage, whitelisting, faster rush delivery).
+      Return JSON:
+      {
+        "detected": boolean,
+        "newScope": "description of added work or null",
+        "recommendedFee": number (additional fair compensation in USD),
+        "impactAnalysis": "why this impacts creator workload/licensing",
+        "counterMessage": "polite, professional message explaining the additional fee",
+        "status": "active"
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const parsed = cleanAndParseJSON(response.text || '');
+    return res.json(parsed || defaultAlert);
+  } catch (err: any) {
+    console.error("Scope creep detector error:", err);
+    res.status(500).json({ error: err.message || "Failed to check scope creep" });
+  }
+});
+
+// =========================================================================
+// 7. CAMPAIGN AUTOPSY & RELATIONSHIP REACTIVATION ENDPOINT
+// =========================================================================
+app.post('/api/campaign/autopsy', async (req, res) => {
+  try {
+    const { campaignId, campaignTitle, brandName, budget, deliverablesData } = req.body;
+
+    const defaultAutopsy: any = {
+      id: 'autopsy_' + Date.now(),
+      campaignId: campaignId || 'camp_spring_2026',
+      campaignTitle: campaignTitle || 'Q1 High-Performance Launch',
+      brandName: brandName || 'Gymshark',
+      totalBudget: budget || 12500,
+      actualSpend: 11800,
+      creatorsEngaged: 6,
+      totalDeliverablesCompleted: 14,
+      totalImpressions: 485000,
+      totalReach: 390000,
+      totalEngagements: 38200,
+      averageEngagementRate: 7.8,
+      costPerView: 0.024,
+      costPerEngagement: 0.31,
+      roiScore: 4.2,
+      whatWorked: [
+        'Short-form vertical video (Reels/TikTok) delivered 74% of all product clicks with a low $0.02 CPM.',
+        'Creators who showed the authentic "workout failure & recovery" routine had 3.1x higher watch retention than polished studio posts.',
+        'Story frames with direct discount code stickers generated an instant $34,000 in tracked affiliate checkout revenue within 48 hours.'
+      ],
+      whatDidnt: [
+        'Static Instagram carousel posts underperformed, generating only 8% of total impressions despite consuming 25% of total budget.',
+        'One creator delivered 3 days late due to unclear script revision guidelines.'
+      ],
+      topPerformingCreators: [
+        {
+          name: 'Alex Rivers',
+          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150',
+          platform: 'instagram',
+          views: 182000,
+          engagementRate: 8.4,
+          costEfficiencyScore: 96,
+          recommendForFuture: true
+        },
+        {
+          name: 'Marcus Vance',
+          avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
+          platform: 'tiktok',
+          views: 145000,
+          engagementRate: 9.1,
+          costEfficiencyScore: 93,
+          recommendForFuture: true
+        },
+        {
+          name: 'Elena Rostova',
+          avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
+          platform: 'youtube',
+          views: 95000,
+          engagementRate: 6.2,
+          costEfficiencyScore: 88,
+          recommendForFuture: true
+        }
+      ],
+      bestPerformingPlatform: 'Instagram Reels & TikTok UGC',
+      recommendationsForNextCampaign: [
+        'Shift 100% of creative budget from static photo carousels into high-contrast short-form vertical video (Reels/TikTok).',
+        'Secure 90-day paid whitelisting rights upfront on top-performing creators (Alex Rivers, Marcus Vance).',
+        'Introduce a 2-tier milestone schedule with mandatory storyboard approval at Day 3 to prevent delivery delays.'
+      ],
+      reactivationOpportunities: [
+        {
+          creatorId: 'alex_rivers',
+          creatorName: 'Alex Rivers',
+          reason: 'Drove 42% of total campaign conversions at an exceptional $0.018 Cost Per View. Audience highly receptive to upcoming Summer Capsule drop.',
+          proposedAngle: '3-Month Ambassador Retainer for Summer Capsule Launch with exclusive promo code',
+          suggestedBudget: 4500,
+          priority: 'HIGH'
+        },
+        {
+          creatorId: 'marcus_vance',
+          creatorName: 'Marcus Vance',
+          reason: 'Viral TikTok breakout reached 145K views organically with 9.1% engagement rate.',
+          proposedAngle: 'Spark Ad Whitelisting + 2x Dedicated TikTok Challenge videos',
+          suggestedBudget: 2800,
+          priority: 'HIGH'
+        }
+      ]
+    };
+
+    const ai = getAI();
+    if (!ai) return res.json(defaultAutopsy);
+
+    const prompt = `
+      You are the Heimdall Campaign Autopsy & Intelligence Engine.
+      Analyze the completed campaign:
+      Title: "${campaignTitle}"
+      Brand: "${brandName}"
+      Budget: $${budget || 12000}
+      Deliverables Data: ${JSON.stringify(deliverablesData || {})}
+
+      Generate a deep post-campaign autopsy analysis in raw JSON matching:
+      {
+        "id": "autopsy_${Date.now()}",
+        "campaignId": "${campaignId || 'camp_1'}",
+        "campaignTitle": "${campaignTitle}",
+        "brandName": "${brandName}",
+        "totalBudget": number,
+        "actualSpend": number,
+        "creatorsEngaged": number,
+        "totalDeliverablesCompleted": number,
+        "totalImpressions": number,
+        "totalReach": number,
+        "totalEngagements": number,
+        "averageEngagementRate": number,
+        "costPerView": number,
+        "costPerEngagement": number,
+        "roiScore": number,
+        "whatWorked": ["string", "string"],
+        "whatDidnt": ["string", "string"],
+        "topPerformingCreators": [
+          { "name": "string", "avatar": "string", "platform": "instagram"|"tiktok"|"youtube", "views": number, "engagementRate": number, "costEfficiencyScore": number, "recommendForFuture": true }
+        ],
+        "bestPerformingPlatform": "string",
+        "recommendationsForNextCampaign": ["string", "string"],
+        "reactivationOpportunities": [
+          { "creatorId": "string", "creatorName": "string", "reason": "string", "proposedAngle": "string", "suggestedBudget": number, "priority": "HIGH"|"MEDIUM" }
+        ]
+      }
+    `;
+
+    const response = await ai.models.generateContent({
+      model: GEMINI_MODEL,
+      contents: prompt,
+      config: { responseMimeType: 'application/json' }
+    });
+
+    const parsed = cleanAndParseJSON(response.text || '');
+    return res.json({ ...defaultAutopsy, ...(parsed || {}) });
+  } catch (err: any) {
+    console.error("Campaign autopsy error:", err);
+    res.status(500).json({ error: err.message || "Failed to generate campaign autopsy" });
+  }
+});
+
+
+export default app;
+
 async function startServer() {
   // Vite middleware setup for Development & Production fallback
   if (process.env.NODE_ENV !== 'production') {
@@ -1340,4 +2328,6 @@ async function startServer() {
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer();
+}

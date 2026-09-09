@@ -1,6 +1,6 @@
 {
   "name": "Heimdall",
-  "description": "AI Brand Intelligence Platform for creators, UGC creators, influencers, freelancers, and agencies to manage brand partnerships, generate AI outreach, and discover sponsors.",
+  "description": "Heimdall — Autonomous Creator Intelligence, Two-Sided Brand-Creator Marketplace, Dynamic Rate Cards, Deal Rooms with Scope Creep Sentinel, AI Contract X-Ray, and Campaign Autopsy Intelligence.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
