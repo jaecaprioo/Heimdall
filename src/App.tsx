@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
+import { Analytics } from '@vercel/analytics/react';
 
 // Subcomponents
 import LoginView from './components/LoginView';
@@ -2705,6 +2706,7 @@ export default function App() {
 
       {/* Confetti Celebration Element */}
       <ConfettiCanvas active={showConfetti} onComplete={() => setShowConfetti(false)} />
+      <Analytics />
 
     </div>
   );
